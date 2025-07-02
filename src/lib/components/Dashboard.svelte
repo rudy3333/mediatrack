@@ -3,14 +3,12 @@
   type Book = {
     isbn: string;
     title: string;
-    description: string | null;
     cover: string | null;
   };
   type SavedBook = {
     id: string;
     isbn: string;
     title: string;
-    description: string | null;
     cover: string | null;
     savedAt: string;
   };
@@ -23,6 +21,24 @@
   let savedBooks: SavedBook[] = [];
   let loadingSavedBooks = false;
   let savedBooksError = '';
+
+  async function deleteBook(id: string) {
+  if (!confirm('Are you sure you want to delete this book?')) return;
+  try {
+    const res = await fetch(`/api/books/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      savedBooksError = data.error || 'Failed to delete book.';
+      return;
+    }
+    // remove from local state
+    savedBooks = savedBooks.filter(b => b.id !== id);
+  } catch (e) {
+    savedBooksError = 'Failed to delete book.';
+  }
+}
 
   function handleLogout() {
     logout();
@@ -63,7 +79,6 @@
           userId: $user.id,
           isbn: book.isbn,
           title: book.title,
-          description: book.description,
           cover: book.cover
         })
       });
@@ -166,7 +181,6 @@
           {/if}
           <div class="book-info">
             <h4>{book.title}</h4>
-            <p>{book.description}</p>
             <p><strong>ISBN:</strong> {book.isbn}</p>
             <button class="save-btn" on:click={saveBook} disabled={savingBook}>{savingBook ? 'Saving...' : 'Save'}</button>
             {#if saveStatus}
@@ -194,9 +208,9 @@
               {/if}
               <div class="book-info">
                 <h4>{b.title}</h4>
-                <p>{b.description}</p>
                 <p><strong>ISBN:</strong> {b.isbn}</p>
                 <p><small>Saved: {formatDate(b.savedAt)}</small></p>
+                <button class="delete-btn" on:click={() => deleteBook(b.id)}>Delete</button>
               </div>
             </div>
           {/each}
