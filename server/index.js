@@ -373,6 +373,70 @@ app.get('/api/books/title/:title', async (req, res) => {
   }
 });
 
+// --- Review System ---
+// POST /api/reviews
+app.post('/api/reviews', async (req, res) => {
+  const { bookId, userId, reviewText, rating } = req.body;
+  if (!bookId || !userId || !reviewText) {
+    return res.status(400).json({ error: 'bookId, userId, and reviewText are required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Reviews`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fields: {
+          BookID: bookId,
+          UserID: userId,
+          ReviewText: reviewText,
+          Rating: rating || null,
+          CreatedAt: new Date().toISOString()
+        }
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to save review');
+    }
+    const data = await response.json();
+    res.status(201).json({ review: data });
+  } catch (error) {
+    console.error('Save review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save review' });
+  }
+});
+
+// GET /api/reviews/:bookId
+app.get('/api/reviews/:bookId', async (req, res) => {
+  const { bookId } = req.params;
+  if (!bookId) {
+    return res.status(400).json({ error: 'bookId is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Reviews?filterByFormula={BookID}='${bookId}'`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch reviews');
+    }
+    const data = await response.json();
+    const reviews = data.records.map(record => ({
+      id: record.id,
+      userId: record.fields.UserID,
+      reviewText: record.fields.ReviewText,
+      rating: record.fields.Rating,
+      createdAt: record.fields.CreatedAt
+    }));
+    res.json({ reviews });
+  } catch (error) {
+    console.error('Fetch reviews error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch reviews' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

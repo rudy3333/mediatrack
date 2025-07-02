@@ -4,6 +4,7 @@
     isbn: string;
     title: string;
     cover: string | null;
+    airtableId: string;
   };
   type SavedBook = {
     id: string;
@@ -21,6 +22,21 @@
   let savedBooks: SavedBook[] = [];
   let loadingSavedBooks = false;
   let savedBooksError = '';
+
+  // --- Review System ---
+  type Review = {
+    id: string;
+    userId: string;
+    reviewText: string;
+    rating?: number;
+    createdAt: string;
+  };
+  let reviews: Record<string, Review[]> = {};
+  let newReviewText: Record<string, string> = {};
+  let newReviewRating: Record<string, number | null> = {};
+  let reviewStatus: Record<string, string> = {};
+  let loadingReviews: Record<string, boolean> = {};
+  let showReviewSection: Record<string, boolean> = {};
 
   async function deleteBook(id: string) {
   if (!confirm('Are you sure you want to delete this book?')) return;
@@ -129,6 +145,49 @@
     });
   }
 
+  async function fetchReviews(bookId: string) {
+    loadingReviews[bookId] = true;
+    try {
+      const res = await fetch(`/api/reviews/${bookId}`);
+      if (!res.ok) {
+        reviews[bookId] = [];
+        return;
+      }
+      const data = await res.json();
+      reviews[bookId] = data.reviews;
+    } finally {
+      loadingReviews[bookId] = false;
+    }
+  }
+
+  async function submitReview(bookId: string) {
+    if (!newReviewText[bookId]?.trim() || !$user?.id) return;
+    reviewStatus[bookId] = '';
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookId,
+          userId: $user.id,
+          reviewText: newReviewText[bookId],
+          rating: newReviewRating[bookId]
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        reviewStatus[bookId] = data.error || 'Failed to submit review.';
+        return;
+      }
+      newReviewText[bookId] = '';
+      newReviewRating[bookId] = null;
+      reviewStatus[bookId] = 'Review submitted!';
+      fetchReviews(bookId);
+    } catch (e) {
+      reviewStatus[bookId] = 'Failed to submit review.';
+    }
+  }
+
   import { onMount } from 'svelte';
 
   onMount(() => {
@@ -139,13 +198,16 @@
   $: if ($user?.id) {
     fetchSavedBooks();
   }
+
+  $: if (book && book.airtableId) {
+    fetchReviews(book.airtableId);
+  }
 </script>
 
 <div class="dashboard">
   <div class="dashboard-header">
     <div class="welcome-section">
       <h1>Welcome back, {$user?.name}!</h1>
-      <p>You're successfully authenticated.</p>
     </div>
     <button class="logout-btn" on:click={handleLogout}>
       Sign Out
@@ -153,14 +215,6 @@
   </div>
 
   <div class="dashboard-content">
-    <div class="info-cards">
-      <div class="info-card">
-        <h3>Profile Information</h3>
-        <p><strong>Name:</strong> {$user?.name}</p>
-        <p><strong>Email:</strong> {$user?.email}</p>
-        <p><strong>Member since:</strong> {$user?.createdAt ? formatDate($user.createdAt) : 'Unknown'}</p>
-      </div>
-    </div>
 
     <div class="book-search">
       <h3>Book Lookup</h3>
@@ -189,6 +243,47 @@
             {#if saveStatus}
               <span class="save-status">{saveStatus}</span>
             {/if}
+            <!-- Review Section -->
+            {#if book && book.airtableId}
+              <div class="review-section">
+                <h5>Reviews</h5>
+                {#if loadingReviews[book.airtableId]}
+                  <p>Loading reviews...</p>
+                {:else if !reviews[book.airtableId] || reviews[book.airtableId].length === 0}
+                  <p>No reviews yet.</p>
+                {:else}
+                  <ul class="review-list">
+                    {#each reviews[book.airtableId] as r}
+                      <li>
+                        <div class="review-meta">
+                          <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                          <span class="review-date">{formatDate(r.createdAt)}</span>
+                        </div>
+                        <div class="review-text">{r.reviewText}</div>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+                {#if $user?.id}
+                  <div class="review-form">
+                    <textarea placeholder="Write your review..." bind:value={newReviewText[book.airtableId]}></textarea>
+                    <select bind:value={newReviewRating[book.airtableId]}>
+                      <option value="">Rating (optional)</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                    <button on:click={() => submitReview(book.airtableId)} disabled={!newReviewText[book.airtableId]?.trim()}>Submit Review</button>
+                    {#if reviewStatus[book.airtableId]}
+                      <span class="review-status">{reviewStatus[book.airtableId]}</span>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+            <!-- End Review Section -->
           </div>
         </div>
       {/if}
@@ -213,6 +308,51 @@
                 <h4>{b.title}</h4>
                 <p><small>Saved: {formatDate(b.savedAt)}</small></p>
                 <button class="delete-btn" on:click={() => deleteBook(b.id)}>Delete</button>
+                <button class="review-btn" on:click={() => {
+                  showReviewSection[b.id] = !showReviewSection[b.id];
+                  if (showReviewSection[b.id] && !reviews[b.id]) fetchReviews(b.id);
+                }}>
+                  {showReviewSection[b.id] ? 'Hide Reviews' : 'Reviews'}
+                </button>
+                {#if showReviewSection[b.id]}
+                  <div class="review-section">
+                    <h5>Reviews</h5>
+                    {#if loadingReviews[b.id]}
+                      <p>Loading reviews...</p>
+                    {:else if !reviews[b.id] || reviews[b.id].length === 0}
+                      <p>No reviews yet.</p>
+                    {:else}
+                      <ul class="review-list">
+                        {#each reviews[b.id] as r}
+                          <li>
+                            <div class="review-meta">
+                              <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                              <span class="review-date">{formatDate(r.createdAt)}</span>
+                            </div>
+                            <div class="review-text">{r.reviewText}</div>
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                    {#if $user?.id}
+                      <div class="review-form">
+                        <textarea placeholder="Write your review..." bind:value={newReviewText[b.id]}></textarea>
+                        <select bind:value={newReviewRating[b.id]}>
+                          <option value="">Rating (optional)</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                          <option value="5">5</option>
+                        </select>
+                        <button on:click={() => submitReview(b.id)} disabled={!newReviewText[b.id]?.trim()}>Submit Review</button>
+                        {#if reviewStatus[b.id]}
+                          <span class="review-status">{reviewStatus[b.id]}</span>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
               </div>
             </div>
           {/each}
@@ -385,14 +525,25 @@
   }
   .saved-book-card {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 16px;
-    align-items: flex-start;
     background: #fafafa;
     border: 1px solid #eee;
     border-radius: 4px;
     padding: 10px;
     min-width: 180px;
     max-width: 240px;
+    box-sizing: border-box;
+  }
+  .book-info {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .review-section {
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
   @media (max-width: 768px) {
@@ -413,5 +564,87 @@
     .info-cards {
       grid-template-columns: 1fr;
     }
+  }
+
+  .review-section {
+    margin-top: 18px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .review-section h5 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+  }
+  .review-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+  }
+  .review-list li {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .review-meta {
+    font-size: 13px;
+    color: #888;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+  .review-rating {
+    color: #ff9800;
+  }
+  .review-text {
+    font-size: 15px;
+    color: #333;
+  }
+  .review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .review-form textarea {
+    resize: vertical;
+    min-height: 40px;
+    font-size: 15px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  .review-form select {
+    width: 120px;
+    font-size: 15px;
+    padding: 3px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  .review-form button {
+    align-self: flex-start;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .review-status {
+    margin-left: 10px;
+    color: #388e3c;
+    font-size: 14px;
+  }
+  .review-btn {
+    margin-top: 8px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-right: 8px;
   }
 </style>
