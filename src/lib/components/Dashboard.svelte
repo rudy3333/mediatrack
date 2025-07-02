@@ -53,11 +53,15 @@
     }
     loadingBook = true;
     try {
-      const res = await fetch(`/api/books/${isbn}`);
+      let res = await fetch(`/api/books/${isbn}`);
       if (!res.ok) {
-        const data = await res.json();
-        bookError = data.error || 'Book not found.';
-        return;
+        // Try title lookup if ISBN lookup fails
+        res = await fetch(`/api/books/title/${encodeURIComponent(isbn)}`);
+        if (!res.ok) {
+          const data = await res.json();
+          bookError = data.error || 'Book not found.';
+          return;
+        }
       }
       book = await res.json();
     } catch (e) {
@@ -181,7 +185,6 @@
           {/if}
           <div class="book-info">
             <h4>{book.title}</h4>
-            <p><strong>ISBN:</strong> {book.isbn}</p>
             <button class="save-btn" on:click={saveBook} disabled={savingBook}>{savingBook ? 'Saving...' : 'Save'}</button>
             {#if saveStatus}
               <span class="save-status">{saveStatus}</span>
@@ -208,7 +211,6 @@
               {/if}
               <div class="book-info">
                 <h4>{b.title}</h4>
-                <p><strong>ISBN:</strong> {b.isbn}</p>
                 <p><small>Saved: {formatDate(b.savedAt)}</small></p>
                 <button class="delete-btn" on:click={() => deleteBook(b.id)}>Delete</button>
               </div>
@@ -328,7 +330,7 @@
     margin-top: 10px;
   }
   .book-cover {
-    width: 100px;
+    width: 75px;
     height: auto;
     border: 1px solid #eee;
     border-radius: 4px;
@@ -379,18 +381,18 @@
   .saved-books-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 16px;
   }
   .saved-book-card {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     align-items: flex-start;
     background: #fafafa;
     border: 1px solid #eee;
     border-radius: 4px;
-    padding: 12px;
-    min-width: 250px;
-    max-width: 350px;
+    padding: 10px;
+    min-width: 180px;
+    max-width: 240px;
   }
 
   @media (max-width: 768px) {

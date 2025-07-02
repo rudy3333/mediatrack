@@ -247,8 +247,8 @@ app.get('/api/books/:isbn', async (req, res) => {
 
 app.post('/api/books/save', async (req, res) => {
   const { userId, isbn, title, cover } = req.body;
-  if (!userId || !isbn || !title) {
-    return res.status(400).json({ error: 'userId, isbn, and title are required' });
+  if (!userId || !title) {
+    return res.status(400).json({ error: 'userId and title are required' });
   }
 
   try {
@@ -260,7 +260,7 @@ app.post('/api/books/save', async (req, res) => {
       body: JSON.stringify({
         fields: {
           UserID: userId,
-          ISBN: isbn,
+          ISBN: isbn || '',
           Title: title,
           Cover: cover,
           SavedAt: new Date().toISOString()
@@ -336,6 +336,42 @@ app.delete('/api/books/:airtableId', async (req, res) => {
   }
 });
 
+app.get('/api/books/title/:title', async (req, res) => {
+  const { title } = req.params;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+
+  try {
+    // Open Library Search API for title
+    const apiUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    const data = await response.json();
+    if (!data.docs || data.docs.length === 0) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    // Pick the first result (even if it has no ISBN)
+    const book = data.docs[0];
+    const isbn = book.isbn && book.isbn.length > 0 ? book.isbn[0] : '';
+    let coverUrl = '';
+    if (isbn) {
+      coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    } else if (book.cover_i) {
+      coverUrl = `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`;
+    }
+    res.json({
+      isbn,
+      title: book.title,
+      cover: coverUrl
+    });
+  } catch (error) {
+    console.error('Book lookup by title error:', error);
+    res.status(500).json({ error: 'Failed to fetch book data' });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
