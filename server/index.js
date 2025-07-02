@@ -91,7 +91,8 @@ async function getUserByEmail(email) {
     const record = data.records[0];
     
     return {
-      id: record.id,
+      id: record.fields['User ID'],
+      airtableId: record.id,
       name: record.fields.Name,
       email: record.fields.Email,
       password: record.fields.Password,
@@ -163,7 +164,8 @@ app.post('/api/auth/register', async (req, res) => {
     
     // Return user data (without password)
     const user = {
-      id: data.id,
+      id: data.fields['User ID'],
+      airtableId: data.id,
       name: data.fields.Name,
       email: data.fields.Email,
       createdAt: data.fields.CreatedAt
@@ -201,6 +203,7 @@ app.post('/api/auth/login', async (req, res) => {
     // Return user data (without password)
     const userData = {
       id: user.id,
+      airtableId: user.airtableId,
       name: user.name,
       email: user.email,
       createdAt: user.createdAt
@@ -210,6 +213,105 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message || 'Login failed' });
+  }
+});
+
+app.get('/api/books/:isbn', async (req, res) => {
+  const { isbn } = req.params;
+  if (!isbn) {
+    return res.status(400).json({ error: 'ISBN is required' });
+  }
+
+  try {
+    const apiUrl = `https://openlibrary.org/isbn/${isbn}.json`;
+    const coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    const data = await response.json();
+
+    const title = data.title || null;
+    let description = null;
+    if (typeof data.description === 'string') {
+      description = data.description;
+    } else if (typeof data.description === 'object' && data.description?.value) {
+      description = data.description.value;
+    }
+
+    res.json({
+      isbn,
+      title,
+      description,
+      cover: coverUrl
+    });
+  } catch (error) {
+    console.error('Book lookup error:', error);
+    res.status(500).json({ error: 'Failed to fetch book data' });
+  }
+});
+
+app.post('/api/books/save', async (req, res) => {
+  const { userId, isbn, title, description, cover } = req.body;
+  if (!userId || !isbn || !title) {
+    return res.status(400).json({ error: 'userId, isbn, and title are required' });
+  }
+
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Books`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fields: {
+          UserID: userId,
+          ISBN: isbn,
+          Title: title,
+          Description: description,
+          Cover: cover,
+          SavedAt: new Date().toISOString()
+        }
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to save book');
+    }
+    const data = await response.json();
+    res.status(201).json({ book: data });
+  } catch (error) {
+    console.error('Save book error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save book' });
+  }
+});
+
+app.get('/api/books/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Books?filterByFormula={UserID}='${userId}'`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch books');
+    }
+    const data = await response.json();
+    const books = data.records.map(record => ({
+      id: record.id,
+      isbn: record.fields.ISBN,
+      title: record.fields.Title,
+      description: record.fields.Description,
+      cover: record.fields.Cover,
+      savedAt: record.fields.SavedAt
+    }));
+    res.json({ books });
+  } catch (error) {
+    console.error('Fetch user books error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch books' });
   }
 });
 
