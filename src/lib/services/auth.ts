@@ -1,9 +1,9 @@
 import type { User, LoginCredentials, RegisterCredentials } from '../types/auth';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = '';
 
 async function apiRequest(endpoint: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`/api${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
