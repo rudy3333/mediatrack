@@ -4,6 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig({
   plugins: [svelte()],
   server: {
+    allowedHosts: ['.ngrok-free.app', 'localhost', '127.0.0.1'],
     host: true,
     proxy: {
       '/api': {
