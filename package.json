@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently \"npm run dev:server\" \"sudo npm run dev:client\"",
     "dev:server": "node server/index.js",
     "dev:client": "vite",
     "build": "vite build",
@@ -21,7 +21,8 @@
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
     "svelte": "^4.2.20",
-    "vite": "^5.0.3"
+    "vite": "^5.0.3",
+    "vite-plugin-mkcert": "^1.17.8"
   },
   "description": "Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).",
   "main": "svelte.config.js",
