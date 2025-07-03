@@ -38,23 +38,26 @@
   let loadingReviews: Record<string, boolean> = {};
   let showReviewSection: Record<string, boolean> = {};
 
+  // Add API base URL from Vite env
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
   async function deleteBook(id: string) {
-  if (!confirm('Are you sure you want to delete this book?')) return;
-  try {
-    const res = await fetch(`/api/books/${id}`, {
-      method: 'DELETE'
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      savedBooksError = data.error || 'Failed to delete book.';
-      return;
+    if (!confirm('Are you sure you want to delete this book?')) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/books/${id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        savedBooksError = data.error || 'Failed to delete book.';
+        return;
+      }
+      // remove from local state
+      savedBooks = savedBooks.filter(b => b.id !== id);
+    } catch (e) {
+      savedBooksError = 'Failed to delete book.';
     }
-    // remove from local state
-    savedBooks = savedBooks.filter(b => b.id !== id);
-  } catch (e) {
-    savedBooksError = 'Failed to delete book.';
   }
-}
 
   function handleLogout() {
     logout();
@@ -69,10 +72,10 @@
     }
     loadingBook = true;
     try {
-      let res = await fetch(`/api/books/${isbn}`);
+      let res = await fetch(`${API_BASE_URL}/api/books/${isbn}`);
       if (!res.ok) {
         // Try title lookup if ISBN lookup fails
-        res = await fetch(`/api/books/title/${encodeURIComponent(isbn)}`);
+        res = await fetch(`${API_BASE_URL}/api/books/title/${encodeURIComponent(isbn)}`);
         if (!res.ok) {
           const data = await res.json();
           bookError = data.error || 'Book not found.';
@@ -92,7 +95,7 @@
     saveStatus = '';
     savingBook = true;
     try {
-      const res = await fetch('/api/books/save', {
+      const res = await fetch(`${API_BASE_URL}/api/books/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -120,7 +123,7 @@
     loadingSavedBooks = true;
     savedBooksError = '';
     try {
-      const res = await fetch(`/api/books/user/${$user.id}`);
+      const res = await fetch(`${API_BASE_URL}/api/books/user/${$user.id}`);
       if (!res.ok) {
         const data = await res.json();
         savedBooksError = data.error || 'Failed to fetch saved books.';
@@ -148,7 +151,7 @@
   async function fetchReviews(bookId: string) {
     loadingReviews[bookId] = true;
     try {
-      const res = await fetch(`/api/reviews/${bookId}`);
+      const res = await fetch(`${API_BASE_URL}/api/reviews/${bookId}`);
       if (!res.ok) {
         reviews[bookId] = [];
         return;
@@ -164,7 +167,7 @@
     if (!newReviewText[bookId]?.trim() || !$user?.id) return;
     reviewStatus[bookId] = '';
     try {
-      const res = await fetch('/api/reviews', {
+      const res = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

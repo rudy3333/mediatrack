@@ -4,7 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig({
   plugins: [svelte()],
   server: {
-    allowedHosts: 'all',
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
