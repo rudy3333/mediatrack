@@ -513,23 +513,8 @@ app.get('/api/reviews/recent', async (req, res) => {
       console.error('Error running curl:', error);
       return res.status(500).json({ error: 'Failed to fetch recent reviews (curl error)' });
     }
-    try {
-      const data = JSON.parse(stdout);
-      const reviews = (data.records || []).map(record => ({
-        id: record.id,
-        bookId: record.fields.BookID,
-        userId: record.fields.UserID,
-        userName: record.fields.UserName || '',
-        userProfilePicture: record.fields.UserProfilePicture || '',
-        reviewText: record.fields.ReviewText,
-        rating: record.fields.Rating,
-        createdAt: record.fields.CreatedAt
-      }));
-      res.json({ reviews });
-    } catch (parseErr) {
-      console.error('Error parsing curl output:', parseErr, stdout);
-      res.status(500).json({ error: 'Failed to parse Airtable response' });
-    }
+    res.setHeader('Content-Type', 'application/json');
+    res.send(stdout);
   });
 });
 
