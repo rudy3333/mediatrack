@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"sudo npm run dev:client\"",
+    "dev": "npm run build && concurrently \"npm run dev:server\" \"sudo npm run dev:client\"",
     "dev:server": "node server/index.js",
     "dev:client": "vite",
     "build": "vite build",
