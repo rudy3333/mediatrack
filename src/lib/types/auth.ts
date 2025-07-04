@@ -1,5 +1,6 @@
 export interface User {
   id: string;
+  airtableId?: string;
   email: string;
   name: string;
   createdAt: string;

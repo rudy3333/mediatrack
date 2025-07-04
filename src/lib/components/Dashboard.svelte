@@ -94,12 +94,18 @@
     if (!book || !$user?.id) return;
     saveStatus = '';
     savingBook = true;
+    
+    // Debug: Log the user object to see what we're working with
+    console.log('User object:', $user);
+    console.log('User ID type:', typeof $user.id, 'Value:', $user.id);
+    console.log('User airtableId:', $user.airtableId);
+    
     try {
       const res = await fetch(`/api/books/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: $user.id,
+          userId: $user.airtableId || $user.id, // Use airtableId if available, fallback to id
           isbn: book.isbn,
           title: book.title,
           cover: book.cover
@@ -111,6 +117,9 @@
         return;
       }
       saveStatus = 'Book saved!';
+      
+      // Refresh the saved books list to show the newly saved book
+      await fetchSavedBooks();
     } catch (e) {
       saveStatus = 'Failed to save book.';
     } finally {
@@ -123,7 +132,7 @@
     loadingSavedBooks = true;
     savedBooksError = '';
     try {
-      const res = await fetch(`/api/books/user/${$user.id}`);
+      const res = await fetch(`/api/books/user/${$user.airtableId || $user.id}`);
       if (!res.ok) {
         const data = await res.json();
         savedBooksError = data.error || 'Failed to fetch saved books.';
@@ -172,7 +181,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookId,
-          userId: $user.id,
+          userId: $user.airtableId || $user.id, // Use airtableId if available, fallback to id
           reviewText: newReviewText[bookId],
           rating: newReviewRating[bookId]
         })
@@ -224,7 +233,7 @@
       <div class="book-search-form">
         <input
           type="text"
-          placeholder="Enter ISBN or Title"
+          placeholder="Enter ISBN or Title (e.g 978-1338617436/Heartstopper Vol. 1)"
           bind:value={isbn}
           on:keydown={(e) => e.key === 'Enter' && searchBook()}
           disabled={loadingBook}
@@ -439,7 +448,7 @@
     border-radius: 4px;
     padding: 20px;
     margin-bottom: 30px;
-    max-width: 500px;
+    max-width: 700px;
   }
   .book-search-form {
     display: flex;

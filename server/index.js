@@ -91,7 +91,7 @@ async function getUserByEmail(email) {
     const record = data.records[0];
     
     return {
-      id: record.fields['User ID'],
+      id: record.id, // Use Airtable record ID as user ID
       airtableId: record.id,
       name: record.fields.Name,
       email: record.fields.Email,
@@ -164,7 +164,7 @@ app.post('/api/auth/register', async (req, res) => {
     
     // Return user data (without password)
     const user = {
-      id: data.fields['User ID'],
+      id: data.id, // Use Airtable record ID as user ID
       airtableId: data.id,
       name: data.fields.Name,
       email: data.fields.Email,
@@ -259,7 +259,7 @@ app.post('/api/books/save', async (req, res) => {
       headers,
       body: JSON.stringify({
         fields: {
-          UserID: userId,
+          UserID: String(userId), // Convert to string to ensure compatibility
           ISBN: isbn || '',
           Title: title,
           Cover: cover,
@@ -285,7 +285,7 @@ app.get('/api/books/user/:userId', async (req, res) => {
     return res.status(400).json({ error: 'User ID is required' });
   }
   try {
-    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Books?filterByFormula={UserID}='${userId}'`;
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Books?filterByFormula={UserID}='${String(userId)}'`;
     const headers = getAirtableHeaders();
     const response = await fetch(url, { headers });
     if (!response.ok) {
@@ -386,15 +386,15 @@ app.post('/api/reviews', async (req, res) => {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        fields: {
-          BookID: bookId,
-          UserID: userId,
-          ReviewText: reviewText,
-          Rating: rating || null,
-          CreatedAt: new Date().toISOString()
-        }
-      })
+              body: JSON.stringify({
+          fields: {
+            BookID: bookId,
+            UserID: String(userId), // Convert to string to ensure compatibility
+            ReviewText: reviewText,
+            Rating: rating || null,
+            CreatedAt: new Date().toISOString()
+          }
+        })
     });
     if (!response.ok) {
       const error = await response.json();
