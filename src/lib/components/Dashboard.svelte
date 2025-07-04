@@ -224,7 +224,7 @@
       <div class="book-search-form">
         <input
           type="text"
-          placeholder="Enter ISBN (e.g. 9780140328721)"
+          placeholder="Enter ISBN or Title"
           bind:value={isbn}
           on:keydown={(e) => e.key === 'Enter' && searchBook()}
           disabled={loadingBook}
