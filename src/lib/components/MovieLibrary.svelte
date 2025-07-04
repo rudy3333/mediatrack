@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { getUserMovies, deleteMovie } from '../services/movies';
   import type { Movie } from '../services/movies';
+  import { user } from '../stores/auth';
+  import { get } from 'svelte/store';
   export let userId: string;
   export let movieReloadKey: number;
   let movies: Movie[] = [];
@@ -13,6 +15,8 @@
   type Review = {
     id: string;
     userId: string;
+    userName?: string;
+    userProfilePicture?: string;
     reviewText: string;
     rating?: number;
     createdAt: string;
@@ -75,13 +79,16 @@
   async function submitReview(movieId: string) {
     if (!newReviewText[movieId]?.trim() || !userId) return;
     reviewStatus[movieId] = '';
+    const $user = get(user);
     try {
       const res = await fetch(`/api/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bookId: movieId, // API expects bookId, reuse for movies
+          bookId: movieId,
           userId,
+          userName: $user?.name,
+          userProfilePicture: $user?.profilePicture,
           reviewText: newReviewText[movieId],
           rating: newReviewRating[movieId] != null ? String(newReviewRating[movieId]) : null
         })
@@ -142,6 +149,11 @@
     return stars;
   }
 
+  function handleImgError(e: Event) {
+    const img = e.target as HTMLImageElement | null;
+    if (img && img.src !== '/static/placeholder.jpg') img.src = '/static/placeholder.jpg';
+  }
+
   $: if (userId || movieReloadKey) load();
   onMount(load);
 </script>
@@ -196,6 +208,12 @@
           {#each reviews[getModalMovieId()] as r}
             <li>
               <div class="review-meta">
+                {#if r.userProfilePicture}
+                  <img src={r.userProfilePicture} alt={r.userName} class="review-pfp" width="28" height="28" on:error={handleImgError} />
+                {:else}
+                  <img src="/static/placeholder.jpg" alt="No profile" class="review-pfp" width="28" height="28" />
+                {/if}
+                <span class="review-user">{r.userName || 'Anonymous'}</span>
                 <span class="review-rating">{r.rating ? `Rating: ${renderStars(r.rating)}` : ''}</span>
                 <span class="review-date">{formatDate(r.createdAt)}</span>
                 {#if r.userId === userId && getModalMovieId() !== ''}
@@ -349,4 +367,17 @@
 .star { font-size: 1.7em; color: #bbb; cursor: pointer; transition: color 0.2s; }
 .star.filled { color: #ff9800; }
 .star:hover, .star:hover ~ .star { color: #ffa726; }
+.review-pfp {
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  margin-right: 8px;
+  border: 1.5px solid #bfc9e0;
+}
+.review-user {
+  font-weight: 600;
+  color: #22223b;
+  margin-right: 10px;
+}
 </style>

@@ -409,7 +409,7 @@ app.get('/api/books/title/:title', async (req, res) => {
 // --- Review System ---
 // POST /api/reviews
 app.post('/api/reviews', async (req, res) => {
-  const { bookId, userId, reviewText, rating } = req.body;
+  const { bookId, userId, reviewText, rating, userName, userProfilePicture } = req.body;
   if (!bookId || !userId || !reviewText) {
     return res.status(400).json({ error: 'bookId, userId, and reviewText are required' });
   }
@@ -419,15 +419,17 @@ app.post('/api/reviews', async (req, res) => {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-              body: JSON.stringify({
-          fields: {
-            BookID: bookId,
-            UserID: String(userId), // Convert to string to ensure compatibility
-            ReviewText: reviewText,
-            Rating: rating || null,
-            CreatedAt: new Date().toISOString()
-          }
-        })
+      body: JSON.stringify({
+        fields: {
+          BookID: bookId,
+          UserID: String(userId),
+          ReviewText: reviewText,
+          Rating: rating || null,
+          CreatedAt: new Date().toISOString(),
+          UserName: userName || '',
+          UserProfilePicture: userProfilePicture || ''
+        }
+      })
     });
     if (!response.ok) {
       const error = await response.json();
@@ -459,6 +461,8 @@ app.get('/api/reviews/:bookId', async (req, res) => {
     const reviews = data.records.map(record => ({
       id: record.id,
       userId: record.fields.UserID,
+      userName: record.fields.UserName || '',
+      userProfilePicture: record.fields.UserProfilePicture || '',
       reviewText: record.fields.ReviewText,
       rating: record.fields.Rating,
       createdAt: record.fields.CreatedAt

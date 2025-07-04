@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { user } from '../stores/auth';
+  import { get } from 'svelte/store';
   export let userId: string;
   let books: any[] = [];
   let loading = false;
@@ -9,6 +11,8 @@
   type Review = {
     id: string;
     userId: string;
+    userName?: string;
+    userProfilePicture?: string;
     reviewText: string;
     rating?: number;
     createdAt: string;
@@ -68,6 +72,7 @@
   async function submitReview(bookId: string) {
     if (!newReviewText[bookId]?.trim() || !userId) return;
     reviewStatus[bookId] = '';
+    const $user = get(user);
     try {
       const res = await fetch(`/api/reviews`, {
         method: 'POST',
@@ -75,6 +80,8 @@
         body: JSON.stringify({
           bookId,
           userId,
+          userName: $user?.name,
+          userProfilePicture: $user?.profilePicture,
           reviewText: newReviewText[bookId],
           rating: newReviewRating[bookId] != null ? String(newReviewRating[bookId]) : null
         })
@@ -123,6 +130,11 @@
   // Helper to safely get modalBookId as string
   function getModalBookId() {
     return modalBook && typeof modalBook.id === 'string' ? modalBook.id : '';
+  }
+
+  function handleImgError(e: Event) {
+    const img = e.target as HTMLImageElement | null;
+    if (img && img.src !== '/static/placeholder.jpg') img.src = '/static/placeholder.jpg';
   }
 
   $: if (userId) load();
@@ -181,6 +193,12 @@
           {#each reviews[getModalBookId()] as r}
             <li>
               <div class="review-meta">
+                {#if r.userProfilePicture}
+                  <img src={r.userProfilePicture} alt={r.userName} class="review-pfp" width="28" height="28" on:error={handleImgError} />
+                {:else}
+                  <img src="/static/placeholder.jpg" alt="No profile" class="review-pfp" width="28" height="28" />
+                {/if}
+                <span class="review-user">{r.userName || 'Anonymous'}</span>
                 <span class="review-rating">{r.rating ? `Rating: ${'★'.repeat(+r.rating)}${'☆'.repeat(5 - +r.rating)}` : ''}</span>
                 <span class="review-date">{formatDate(r.createdAt)}</span>
                 {#if r.userId === userId && getModalBookId() !== ''}
@@ -331,4 +349,17 @@
 .star { font-size: 1.7em; color: #bbb; cursor: pointer; transition: color 0.2s; }
 .star.filled { color: #ff9800; }
 .star:hover, .star:hover ~ .star { color: #ffa726; }
+.review-pfp {
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  margin-right: 8px;
+  border: 1.5px solid #bfc9e0;
+}
+.review-user {
+  font-weight: 600;
+  color: #22223b;
+  margin-right: 10px;
+}
 </style> 
