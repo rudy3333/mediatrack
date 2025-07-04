@@ -773,6 +773,74 @@ app.get('/api/movies/id/:id', async (req, res) => {
   }
 });
 
+// --- MUSIC ALBUMS ENDPOINTS ---
+// Album search (by album title) using MusicBrainz
+app.get('/api/music/albums/search', async (req, res) => {
+  const { album } = req.query;
+  if (!album) {
+    return res.status(400).json({ error: 'Album title is required' });
+  }
+  const url = `https://musicbrainz.org/ws/2/release-group/?query=releasegroup:${encodeURIComponent(album)}&type=album&fmt=json&limit=10`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'MediaTrackApp/1.0 (your-email@example.com)'
+      }
+    });
+    const data = await response.json();
+    if (!data['release-groups'] || data['release-groups'].length === 0) {
+      return res.status(404).json({ error: 'No albums found' });
+    }
+    const albums = data['release-groups'].map(a => ({
+      mbid: a.id,
+      title: a.title,
+      artist: a['artist-credit']?.[0]?.name || '',
+      firstReleaseDate: a['first-release-date'] || '',
+      cover: `https://coverartarchive.org/release-group/${a.id}/front-250`
+    }));
+    res.json({ albums });
+  } catch (error) {
+    console.error('Album search error:', error);
+    res.status(500).json({ error: 'Failed to search albums' });
+  }
+});
+
+// Save album to user's library
+app.post('/api/music/albums/save', async (req, res) => {
+  const { userId, mbid, title, artist, cover, firstReleaseDate } = req.body;
+  if (!userId || !title || !artist) {
+    return res.status(400).json({ error: 'userId, title, and artist are required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Albums`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fields: {
+          UserID: String(userId),
+          MBID: mbid || '',
+          Title: title,
+          Artist: artist,
+          Cover: cover || '',
+          FirstReleaseDate: firstReleaseDate || '',
+          SavedAt: new Date().toISOString()
+        }
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to save album');
+    }
+    const data = await response.json();
+    res.status(201).json({ album: data });
+  } catch (error) {
+    console.error('Save album error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save album' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

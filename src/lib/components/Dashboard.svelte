@@ -6,6 +6,7 @@
   import BookLibrary from './BookLibrary.svelte';
   import MovieSearch from './MovieSearch.svelte';
   import MovieLibrary from './MovieLibrary.svelte';
+  import AlbumSearch from './AlbumSearch.svelte';
   import { writable } from 'svelte/store';
   type Book = {
     isbn: string;
@@ -30,7 +31,7 @@
   let loadingSavedBooks = false;
   let savedBooksError = '';
   let userId: string | null = null;
-  let tab: 'books' | 'movies' = 'books';
+  let tab: 'books' | 'movies' | 'albums' = 'books';
 
   // --- Review System ---
   type Review = {
@@ -427,12 +428,16 @@
     <div class="tabs">
       <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
       <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>Movies/Shows</button>
+      <button class:active={tab === 'albums'} on:click={() => tab = 'albums'}>Albums</button>
     </div>
     {#if userId && tab === 'books'}
       <div class="booksearch-inline booksearch-right"><BookSearch userId={userId} /></div>
     {/if}
     {#if userId && tab === 'movies'}
       <div class="booksearch-inline booksearch-right"><MovieSearch userId={userId} on:movie-saved={handleMovieSaved} /></div>
+    {/if}
+    {#if userId && tab === 'albums'}
+      <div class="booksearch-inline booksearch-right"><AlbumSearch /></div>
     {/if}
   </div>
   {#if !userId}

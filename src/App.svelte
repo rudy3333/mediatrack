@@ -4,6 +4,7 @@
   import AuthForm from './lib/components/AuthForm.svelte';
   import Dashboard from './lib/components/Dashboard.svelte';
   import type { LoginCredentials, RegisterCredentials } from './lib/types/auth';
+  import AlbumSearch from './lib/components/AlbumSearch.svelte';
 
   let authMode: 'login' | 'register' = 'login';
   let authError = '';
