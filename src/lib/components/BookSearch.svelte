@@ -82,7 +82,19 @@
 
 <style>
 .book-search { margin: 1em 0; }
-.result { margin-top: 1em; display: flex; align-items: center; gap: 1em; }
+.result {
+  margin-top: 1em;
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  background: #fff;
+  border: 2px solid #1976d2;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(60,60,120,0.18);
+  padding: 18px 24px;
+  opacity: 1;
+  z-index: 1003;
+}
 .error { color: red; margin-top: 0.5em; }
 .save-status { color: green; margin-left: 1em; }
 </style> 

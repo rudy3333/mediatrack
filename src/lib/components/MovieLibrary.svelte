@@ -137,7 +137,7 @@
   }
 
   // Helper to safely get modalMovieId as string
-  function getModalMovieId() {
+  function getModalMovieId(): string {
     return modalMovie && typeof modalMovie.id === 'string' ? modalMovie.id : '';
   }
 
@@ -198,10 +198,10 @@
           <line x1="19" y1="9" x2="9" y2="19" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
       </button>
-      <h3>Reviews for {modalMovie.title}</h3>
+      <h3>Reviews for {modalMovie?.title}</h3>
       {#if loadingReviews[getModalMovieId()]}
         <p>Loading reviews...</p>
-      {:else if !reviews[getModalMovieId()] || reviews[getModalMovieId()].length === 0}
+      {:else if !reviews[getModalMovieId()] || reviews[getModalMovieId()]?.length === 0}
         <p>No reviews yet.</p>
       {:else}
         <ul class="review-list">
@@ -235,7 +235,7 @@
         <div class="star-input">
           {#each Array(5) as _, i (i)}
             <span
-              class="star {newReviewRating[getModalMovieId()] >= 5 - i ? 'filled' : ''}"
+              class="star {newReviewRating[getModalMovieId()] && newReviewRating[getModalMovieId()] >= 5 - i ? 'filled' : ''}"
               on:click={() => newReviewRating[getModalMovieId()] = 5 - i}
               >&#9733;</span>
           {/each}
@@ -282,7 +282,10 @@
 .modal-overlay {
   position: fixed; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  background: #fff;
+  background: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  border: 2px solid #1976d2;
   border-radius: 18px;
   box-shadow: 0 8px 32px rgba(60,60,120,0.18);
   padding: 48px 40px 36px 40px;
@@ -292,7 +295,14 @@
   max-height: 96vh;
   overflow-y: auto;
 }
-.modal-content { position: relative; }
+.modal-content {
+  background: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  border-radius: 16px;
+  box-shadow: none;
+  position: relative;
+}
 .close-modal {
   position: absolute;
   top: -30px;
@@ -379,5 +389,10 @@
   font-weight: 600;
   color: #22223b;
   margin-right: 10px;
+}
+.modal-overlay, .modal-content, .modal-backdrop, .movie-library {
+  background-color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
 }
 </style>
