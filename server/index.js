@@ -503,19 +503,31 @@ app.delete('/api/reviews/:reviewId', async (req, res) => {
   }
 });
 
-// GET /api/reviews/recent - fetch 10 most recent reviews
+// GET /api/reviews/recent
 app.get('/api/reviews/recent', async (req, res) => {
-  const AIRTABLE_BASE_ID = AIRTABLE_CONFIG.baseId;
-  const AIRTABLE_API_KEY = AIRTABLE_CONFIG.apiKey;
-  const curlCmd = `curl -s -X GET \"https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=10\" -H \"Authorization: Bearer ${AIRTABLE_API_KEY}\" -H \"Content-Type: application/json\"`;
-  exec(curlCmd, (error, stdout, stderr) => {
-    if (error) {
-      console.error('Error running curl:', error);
-      return res.status(500).json({ error: 'Failed to fetch recent reviews (curl error)' });
+  try {
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    if (!baseId || !apiKey) {
+      return res.status(500).json({ error: 'Airtable configuration missing' });
     }
-    res.setHeader('Content-Type', 'application/json');
-    res.send(stdout);
-  });
+    const url = `https://api.airtable.com/v0/${baseId}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=10`;
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    };
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to fetch recent reviews');
+    }
+    const data = await response.json();
+    res.set('Content-Type', 'application/json');
+    res.json(data);
+  } catch (error) {
+    console.error('Fetch recent reviews error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch recent reviews' });
+  }
 });
 
 // --- MOVIES/SHOWS ENDPOINTS ---
