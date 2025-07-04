@@ -83,7 +83,7 @@
           bookId: movieId, // API expects bookId, reuse for movies
           userId,
           reviewText: newReviewText[movieId],
-          rating: newReviewRating[movieId]
+          rating: newReviewRating[movieId] != null ? String(newReviewRating[movieId]) : null
         })
       });
       if (!res.ok) {
@@ -215,10 +215,10 @@
       {/if}
       <div class="review-form">
         <div class="star-input">
-          {#each Array(5) as _, i}
+          {#each Array(5) as _, i (i)}
             <span
-              class="star {newReviewRating[getModalMovieId()] >= i + 1 ? 'filled' : ''}"
-              on:click={() => newReviewRating[getModalMovieId()] = i + 1}
+              class="star {newReviewRating[getModalMovieId()] >= 5 - i ? 'filled' : ''}"
+              on:click={() => newReviewRating[getModalMovieId()] = 5 - i}
               >&#9733;</span>
           {/each}
         </div>
@@ -342,7 +342,9 @@
   text-align: center;
   margin-left: auto;
   margin-right: auto;
-  display: block;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
 }
 .star { font-size: 1.7em; color: #bbb; cursor: pointer; transition: color 0.2s; }
 .star.filled { color: #ff9800; }

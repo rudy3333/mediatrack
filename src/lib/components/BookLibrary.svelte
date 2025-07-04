@@ -76,7 +76,7 @@
           bookId,
           userId,
           reviewText: newReviewText[bookId],
-          rating: newReviewRating[bookId]
+          rating: newReviewRating[bookId] != null ? String(newReviewRating[bookId]) : null
         })
       });
       if (!res.ok) {
@@ -118,6 +118,11 @@
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  // Helper to safely get modalBookId as string
+  function getModalBookId() {
+    return modalBook && typeof modalBook.id === 'string' ? modalBook.id : '';
   }
 
   $: if (userId) load();
@@ -166,22 +171,22 @@
           <line x1="19" y1="9" x2="9" y2="19" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
       </button>
-      <h3>Reviews for {modalBook.title}</h3>
-      {#if loadingReviews[modalBook.id]}
+      <h3>Reviews for {modalBook ? modalBook.title : ''}</h3>
+      {#if loadingReviews[getModalBookId()]}
         <p>Loading reviews...</p>
-      {:else if !reviews[modalBook.id] || reviews[modalBook.id].length === 0}
+      {:else if !reviews[getModalBookId()] || reviews[getModalBookId()].length === 0}
         <p>No reviews yet.</p>
       {:else}
         <ul class="review-list">
-          {#each reviews[modalBook.id] as r}
+          {#each reviews[getModalBookId()] as r}
             <li>
               <div class="review-meta">
-                <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                <span class="review-rating">{r.rating ? `Rating: ${'★'.repeat(+r.rating)}${'☆'.repeat(5 - +r.rating)}` : ''}</span>
                 <span class="review-date">{formatDate(r.createdAt)}</span>
-                {#if r.userId === userId}
+                {#if r.userId === userId && getModalBookId() !== ''}
                   <button 
                     class="delete-review-btn" 
-                    on:click={() => deleteReview(r.id, modalBook.id)}
+                    on:click={() => deleteReview(r.id, getModalBookId())}
                     title="Delete this review"
                   >
                     ×
@@ -194,18 +199,18 @@
         </ul>
       {/if}
       <div class="review-form">
-        <textarea placeholder="Write your review..." bind:value={newReviewText[modalBook.id]}></textarea>
-        <select bind:value={newReviewRating[modalBook.id]}>
-          <option value="">Rating (optional)</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-        <button on:click={() => submitReview(modalBook.id)} disabled={!newReviewText[modalBook.id]?.trim()}>Submit Review</button>
-        {#if reviewStatus[modalBook.id]}
-          <span class="review-status">{reviewStatus[modalBook.id]}</span>
+        <div class="star-input">
+          {#each Array(5) as _, i (i)}
+            <span
+              class="star {newReviewRating[getModalBookId()] >= 5 - i ? 'filled' : ''}"
+              on:click={() => newReviewRating[getModalBookId()] = 5 - i}
+              >&#9733;</span>
+          {/each}
+        </div>
+        <textarea placeholder="Write your review..." bind:value={newReviewText[getModalBookId()]}></textarea>
+        <button on:click={() => getModalBookId() && submitReview(getModalBookId())} disabled={!getModalBookId() || !newReviewText[getModalBookId()]?.trim()}>Submit Review</button>
+        {#if getModalBookId() && reviewStatus[getModalBookId()]}
+          <span class="review-status">{reviewStatus[getModalBookId()]}</span>
         {/if}
       </div>
     </div>
@@ -315,4 +320,15 @@
   background: #2e7d32;
   transform: translateY(-2px) scale(1.03);
 }
+.star-input {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  margin-bottom: 8px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.star { font-size: 1.7em; color: #bbb; cursor: pointer; transition: color 0.2s; }
+.star.filled { color: #ff9800; }
+.star:hover, .star:hover ~ .star { color: #ffa726; }
 </style> 
