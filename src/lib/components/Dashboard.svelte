@@ -320,10 +320,100 @@
       alert('Failed to update profile.');
     }
   }
+
+  let recentReviews: any[] = [];
+  let loadingRecent = false;
+  let recentError = '';
+
+  async function fetchBookCoverAndTitle(bookId: string): Promise<{cover: string|null, title: string|null}> {
+    if (!bookId) return {cover: null, title: null};
+    try {
+      const res = await fetch(`/api/books/id/${bookId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.cover) {
+          return {cover: data.cover, title: data.title || null};
+        }
+      }
+    } catch (e) {}
+    try {
+      const res = await fetch(`/api/movies/id/${bookId}`);
+      if (res.ok) {
+        const data = await res.json();
+        return {cover: (data.poster && data.poster !== 'N/A') ? data.poster : null, title: data.title || null};
+      }
+    } catch (e) {}
+    return {cover: null, title: null};
+  }
+
+  onMount(async () => {
+    loadingRecent = true;
+    recentError = '';
+    try {
+      const res = await fetch('/api/recent');
+      if (!res.ok) {
+        const data = await res.json();
+        recentError = data.error || 'Failed to fetch recent reviews.';
+        return;
+      }
+      const data = await res.json();
+      let reviews = data.records || [];
+      await Promise.all(
+        reviews.map(async (review: any) => {
+          const bookId = review.fields?.BookID;
+          const {cover, title} = await fetchBookCoverAndTitle(bookId);
+          review.bookCover = cover;
+          review.bookTitle = title;
+        })
+      );
+      recentReviews = reviews;
+    } catch (e) {
+      recentError = 'Failed to fetch recent reviews.';
+    } finally {
+      loadingRecent = false;
+    }
+  });
+
+  let hoveredReviewIdx: number | null = null;
 </script>
 
 <div class="dashboard-bg"></div>
 <div class="dashboard">
+  <section class="recent-reviews">
+    <h2>Recent Reviews</h2>
+    {#if loadingRecent}
+      <div class="recent-loading">Loading recent reviews...</div>
+    {:else if recentError}
+      <div class="recent-error">{recentError}</div>
+    {:else if recentReviews.length === 0}
+      <div class="recent-empty">No recent reviews found.</div>
+    {:else}
+      <div class="recent-covers-row">
+        {#each recentReviews as review, i}
+          <div class="recent-cover-wrapper"
+            on:mouseenter={() => hoveredReviewIdx = i}
+            on:mouseleave={() => hoveredReviewIdx = null}
+          >
+            <img
+              class="recent-cover"
+              src={review.bookCover || '/static/placeholder.jpg'}
+              alt={review.fields?.BookTitle || 'Book cover'}
+              on:error={handleImgError}
+            />
+            <div class="recent-tooltip">
+              <div class="recent-tooltip-title">{review.fields?.BookTitle || review.bookTitle || ''}</div>
+              <div class="recent-tooltip-reviewer">{review.fields?.UserName || 'Anonymous'}</div>
+              {#if review.fields?.Rating}
+                <div class="recent-tooltip-rating">{'★'.repeat(+review.fields.Rating)}{'☆'.repeat(5 - +review.fields.Rating)}</div>
+              {/if}
+              <div class="recent-tooltip-text">{review.fields?.ReviewText || ''}</div>
+              <div class="recent-tooltip-date">{formatDate(review.fields?.CreatedAt || review.createdTime)}</div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
   {#if userId}
     <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
     <div class="profile-header">
@@ -557,5 +647,110 @@
     margin-top: 8px;
     margin-bottom: 8px;
     display: block;
+  }
+  .recent-reviews {
+    background: rgba(240,245,255,0.7);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(60,60,120,0.06);
+    padding: 18px 22px 12px 22px;
+    margin-bottom: 28px;
+    overflow: visible;
+  }
+  .recent-reviews h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #22223b;
+  }
+  .recent-covers-row {
+    display: flex;
+    flex-direction: row;
+    gap: 18px;
+    overflow-x: visible;
+    padding-bottom: 8px;
+  }
+  .recent-cover-wrapper {
+    flex: 0 0 auto;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #f6f8fa;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.06);
+    position: relative;
+    overflow: visible;
+    z-index: 10;
+  }
+  .recent-cover {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1.5px solid #bfc9e0;
+    background: #e3e7ef;
+    transition: transform 0.15s;
+    cursor: pointer;
+  }
+  .recent-cover:hover {
+    transform: scale(1.07);
+    box-shadow: 0 2px 8px rgba(60,60,120,0.12);
+  }
+  .recent-loading, .recent-error, .recent-empty {
+    color: #888;
+    font-size: 15px;
+    padding: 8px 0;
+  }
+  .recent-tooltip {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    bottom: auto;
+    transform: translateX(-50%) translateY(10px);
+    background: #fff;
+    color: #22223b;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(60,60,120,0.18);
+    padding: 14px 18px 12px 18px;
+    min-width: 220px;
+    max-width: 320px;
+    z-index: 100;
+    font-size: 15px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.18s;
+  }
+  .recent-cover-wrapper:hover .recent-tooltip {
+    opacity: 0.98;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(18px);
+  }
+  .recent-tooltip-title {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+  .recent-tooltip-reviewer {
+    color: #3a3a5a;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .recent-tooltip-rating {
+    color: #f59e42;
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
+  .recent-tooltip-text {
+    color: #444;
+    font-size: 15px;
+    margin-bottom: 2px;
+    margin-top: 2px;
+  }
+  .recent-tooltip-date {
+    color: #7b7b9a;
+    font-size: 13px;
+    margin-top: 4px;
   }
 </style>

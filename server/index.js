@@ -408,6 +408,33 @@ app.get('/api/books/title/:title', async (req, res) => {
   }
 });
 
+app.get('/api/books/id/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Book ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Books/${id}`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch book');
+    }
+    const data = await response.json();
+    res.json({
+      id: data.id,
+      title: data.fields.Title,
+      cover: data.fields.Cover,
+      isbn: data.fields.ISBN,
+      savedAt: data.fields.SavedAt
+    });
+  } catch (error) {
+    console.error('Fetch book by id error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch book' });
+  }
+});
+
 // --- Review System ---
 // POST /api/reviews
 app.post('/api/reviews', async (req, res) => {
@@ -510,7 +537,7 @@ app.get('/api/recent', async (req, res) => {
     if (!baseId || !apiKey) {
       return res.status(500).json({ error: 'Airtable configuration missing' });
     }
-    const url = `https://api.airtable.com/v0/${baseId}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=10`;
+    const url = `https://api.airtable.com/v0/${baseId}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=8`;
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
@@ -714,6 +741,35 @@ app.patch('/api/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: error.message || 'Failed to update user' });
+  }
+});
+
+app.get('/api/movies/id/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Movie ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Movies/${id}`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch movie');
+    }
+    const data = await response.json();
+    res.json({
+      id: data.id,
+      title: data.fields.Title,
+      poster: data.fields.Poster,
+      imdbId: data.fields.IMDbID,
+      type: data.fields.Type,
+      year: data.fields.Year,
+      savedAt: data.fields.SavedAt
+    });
+  } catch (error) {
+    console.error('Fetch movie by id error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch movie' });
   }
 });
 
