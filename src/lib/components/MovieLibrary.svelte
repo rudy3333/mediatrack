@@ -134,6 +134,14 @@
     return modalMovie && typeof modalMovie.id === 'string' ? modalMovie.id : '';
   }
 
+  function renderStars(rating: number) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+      stars += i <= rating ? '★' : '☆';
+    }
+    return stars;
+  }
+
   $: if (userId || movieReloadKey) load();
   onMount(load);
 </script>
@@ -155,7 +163,7 @@
           <span class="saved-at">{movie.savedAt ? `(Saved: ${new Date(movie.savedAt).toLocaleDateString()})` : ''}</span>
           {#if movie.id}
             <button on:click={() => remove(movie.id)}>Delete</button>
-            <button on:click={() => {
+            <button class="reviews-btn" on:click={() => {
               modalMovie = movie;
               if (!reviews[movie.id]) fetchReviews(movie.id);
             }}>
@@ -188,7 +196,7 @@
           {#each reviews[getModalMovieId()] as r}
             <li>
               <div class="review-meta">
-                <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                <span class="review-rating">{r.rating ? `Rating: ${renderStars(r.rating)}` : ''}</span>
                 <span class="review-date">{formatDate(r.createdAt)}</span>
                 {#if r.userId === userId && getModalMovieId() !== ''}
                   <button 
@@ -206,15 +214,15 @@
         </ul>
       {/if}
       <div class="review-form">
+        <div class="star-input">
+          {#each Array(5) as _, i}
+            <span
+              class="star {newReviewRating[getModalMovieId()] >= i + 1 ? 'filled' : ''}"
+              on:click={() => newReviewRating[getModalMovieId()] = i + 1}
+              >&#9733;</span>
+          {/each}
+        </div>
         <textarea placeholder="Write your review..." bind:value={newReviewText[getModalMovieId()]}></textarea>
-        <select bind:value={newReviewRating[getModalMovieId()]}>
-          <option value="">Rating (optional)</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
         <button on:click={() => getModalMovieId() && submitReview(getModalMovieId())} disabled={!getModalMovieId() || !newReviewText[getModalMovieId()]?.trim()}>Submit Review</button>
         {#if getModalMovieId() && reviewStatus[getModalMovieId()]}
           <span class="review-status">{reviewStatus[getModalMovieId()]}</span>
@@ -236,7 +244,7 @@
 .review-list li { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #dbeafe; background: #f5faff; border-radius: 4px; padding-left: 6px; padding-right: 6px; transition: background 0.2s; }
 .review-list li:hover { background: #e3e7ef; }
 .review-meta { font-size: 13px; color: #888; display: flex; gap: 10px; margin-bottom: 2px; align-items: center; }
-.review-rating { color: #ff9800; font-weight: 600; }
+.review-rating { color: #ff9800; font-weight: 600; font-size: 1.2em; letter-spacing: 2px; }
 .review-date { color: #6c757d; }
 .review-text { font-size: 15px; color: #333; margin-top: 2px; }
 .review-form { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; background: #f7f9fc; border-radius: 6px; padding: 8px 6px; }
@@ -296,4 +304,47 @@
 .close-modal:hover svg line {
   stroke: #fff;
 }
+.movie-library li .reviews-btn {
+  background: #43a047;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  box-shadow: 0 2px 8px rgba(67,160,71,0.08);
+}
+.movie-library li .reviews-btn:hover {
+  background: #2e7d32;
+  transform: translateY(-2px) scale(1.03);
+}
+.movie-library li button:not(.reviews-btn) {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+  transition: background 0.2s, transform 0.2s;
+}
+.movie-library li button:not(.reviews-btn):hover {
+  background: #d32f2f;
+  transform: translateY(-2px) scale(1.03);
+}
+.star-input {
+  margin-bottom: 8px;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+.star { font-size: 1.7em; color: #bbb; cursor: pointer; transition: color 0.2s; }
+.star.filled { color: #ff9800; }
+.star:hover, .star:hover ~ .star { color: #ffa726; }
 </style>

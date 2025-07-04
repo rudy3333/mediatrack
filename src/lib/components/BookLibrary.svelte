@@ -143,7 +143,7 @@
           <span class="saved-at">{book.savedAt ? `(Saved: ${new Date(book.savedAt).toLocaleDateString()})` : ''}</span>
           {#if book.id}
             <button on:click={() => remove(book.id)}>Delete</button>
-            <button on:click={() => {
+            <button class="reviews-btn" on:click={() => {
               modalBook = book;
               if (!reviews[book.id]) fetchReviews(book.id);
             }}>
@@ -280,5 +280,39 @@
 }
 .close-modal:hover svg line {
   stroke: #fff;
+}
+.book-library li button {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+  transition: background 0.2s, transform 0.2s;
+}
+.book-library li button:hover {
+  background: #d32f2f;
+  transform: translateY(-2px) scale(1.03);
+}
+.book-library li .reviews-btn {
+  background: #43a047;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  box-shadow: 0 2px 8px rgba(67,160,71,0.08);
+  transition: background 0.2s, transform 0.2s;
+}
+.book-library li .reviews-btn:hover {
+  background: #2e7d32;
+  transform: translateY(-2px) scale(1.03);
 }
 </style> 
