@@ -503,8 +503,7 @@ app.delete('/api/reviews/:reviewId', async (req, res) => {
   }
 });
 
-// GET /api/reviews/recent
-app.get('/api/reviews/recent', async (req, res) => {
+app.get('/api/recent', async (req, res) => {
   try {
     const baseId = process.env.AIRTABLE_BASE_ID;
     const apiKey = process.env.AIRTABLE_API_KEY;
