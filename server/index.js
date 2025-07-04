@@ -3,7 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+import fetch from 'node-fetch';
 import path from 'path';
+import { exec } from 'child_process';
 
 // Load environment variables
 dotenv.config();
@@ -503,30 +505,32 @@ app.delete('/api/reviews/:reviewId', async (req, res) => {
 
 // GET /api/reviews/recent - fetch 10 most recent reviews
 app.get('/api/reviews/recent', async (req, res) => {
-  try {
-    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=10`;
-    const headers = getAirtableHeaders();
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to fetch recent reviews');
+  const AIRTABLE_BASE_ID = AIRTABLE_CONFIG.baseId;
+  const AIRTABLE_API_KEY = AIRTABLE_CONFIG.apiKey;
+  const curlCmd = `curl -s -X GET \"https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Reviews?sort%5B0%5D%5Bfield%5D=CreatedAt&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=10\" -H \"Authorization: Bearer ${AIRTABLE_API_KEY}\" -H \"Content-Type: application/json\"`;
+  exec(curlCmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error running curl:', error);
+      return res.status(500).json({ error: 'Failed to fetch recent reviews (curl error)' });
     }
-    const data = await response.json();
-    const reviews = data.records.map(record => ({
-      id: record.id,
-      bookId: record.fields.BookID,
-      userId: record.fields.UserID,
-      userName: record.fields.UserName || '',
-      userProfilePicture: record.fields.UserProfilePicture || '',
-      reviewText: record.fields.ReviewText,
-      rating: record.fields.Rating,
-      createdAt: record.fields.CreatedAt
-    }));
-    res.json({ reviews });
-  } catch (error) {
-    console.error('Fetch recent reviews error:', error);
-    res.status(500).json({ error: error.message || 'Failed to fetch recent reviews' });
-  }
+    try {
+      const data = JSON.parse(stdout);
+      const reviews = (data.records || []).map(record => ({
+        id: record.id,
+        bookId: record.fields.BookID,
+        userId: record.fields.UserID,
+        userName: record.fields.UserName || '',
+        userProfilePicture: record.fields.UserProfilePicture || '',
+        reviewText: record.fields.ReviewText,
+        rating: record.fields.Rating,
+        createdAt: record.fields.CreatedAt
+      }));
+      res.json({ reviews });
+    } catch (parseErr) {
+      console.error('Error parsing curl output:', parseErr, stdout);
+      res.status(500).json({ error: 'Failed to parse Airtable response' });
+    }
+  });
 });
 
 // --- MOVIES/SHOWS ENDPOINTS ---
