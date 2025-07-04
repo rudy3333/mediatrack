@@ -841,6 +841,37 @@ app.post('/api/music/albums/save', async (req, res) => {
   }
 });
 
+// Get user's saved albums
+app.get('/api/music/albums/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Albums?filterByFormula={UserID}='${String(userId)}'`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch albums');
+    }
+    const data = await response.json();
+    const albums = data.records.map(record => ({
+      id: record.id,
+      mbid: record.fields.MBID,
+      title: record.fields.Title,
+      artist: record.fields.Artist,
+      cover: record.fields.Cover,
+      firstReleaseDate: record.fields.FirstReleaseDate,
+      savedAt: record.fields.SavedAt
+    }));
+    res.json({ albums });
+  } catch (error) {
+    console.error('Fetch user albums error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch albums' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
