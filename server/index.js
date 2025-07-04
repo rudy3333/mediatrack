@@ -501,35 +501,6 @@ app.delete('/api/reviews/:reviewId', async (req, res) => {
   }
 });
 
-// GET /api/reviews/recent
-app.get('/api/reviews/recent', async (req, res) => {
-  try {
-    // Fetch first 10 reviews, no sorting
-    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Reviews?maxRecords=10`;
-    const headers = getAirtableHeaders();
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to fetch reviews');
-    }
-    const data = await response.json();
-    const reviews = data.records.map(record => ({
-      id: record.id,
-      bookId: record.fields.BookID,
-      userId: record.fields.UserID,
-      userName: record.fields.UserName || '',
-      userProfilePicture: record.fields.UserProfilePicture || '',
-      reviewText: record.fields.ReviewText,
-      rating: record.fields.Rating,
-      createdAt: record.fields.CreatedAt
-    }));
-    res.json({ reviews });
-  } catch (error) {
-    console.error('Fetch reviews error:', error);
-    res.status(500).json({ error: error.message || 'Failed to fetch reviews' });
-  }
-});
-
 // --- MOVIES/SHOWS ENDPOINTS ---
 // Lookup by IMDb ID
 app.get('/api/movies/:imdbId', async (req, res) => {

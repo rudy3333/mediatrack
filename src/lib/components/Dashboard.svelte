@@ -320,73 +320,10 @@
       alert('Failed to update profile.');
     }
   }
-
-  let recentReviews: Array<{
-    id: string;
-    bookId: string;
-    userId: string;
-    userName: string;
-    userProfilePicture: string;
-    reviewText: string;
-    rating?: number;
-    createdAt: string;
-  }> = [];
-  let loadingRecentReviews = false;
-  let recentReviewsError = '';
-
-  onMount(async () => {
-    await fetchRecentReviews();
-  });
-
-  async function fetchRecentReviews() {
-    loadingRecentReviews = true;
-    recentReviewsError = '';
-    try {
-      const res = await fetch('/api/reviews/recent');
-      if (!res.ok) {
-        const data = await res.json();
-        recentReviewsError = data.error || 'Failed to fetch recent reviews.';
-        return;
-      }
-      const data = await res.json();
-      recentReviews = data.reviews;
-    } catch (e) {
-      recentReviewsError = 'Failed to fetch recent reviews.';
-    } finally {
-      loadingRecentReviews = false;
-    }
-  }
 </script>
 
 <div class="dashboard-bg"></div>
 <div class="dashboard">
-  {#if loadingRecentReviews}
-    <div class="loader" style="margin-bottom: 18px;"></div>
-  {:else if recentReviewsError}
-    <div class="error" style="margin-bottom: 18px;">{recentReviewsError}</div>
-  {:else if recentReviews.length > 0}
-    <div class="recent-reviews-section">
-      <h3>Recently Reviewed</h3>
-      <ul class="recent-reviews-list">
-        {#each recentReviews as review}
-          <li class="recent-review-item">
-            <img class="recent-review-profile" src={review.userProfilePicture || '/static/placeholder.jpg'} alt="{review.userName}'s profile" on:error={handleImgError} />
-            <div class="recent-review-content">
-              <div class="recent-review-meta">
-                <span class="recent-review-user">{review.userName || 'Anonymous'}</span>
-                <span class="recent-review-date">{formatDate(review.createdAt)}</span>
-                {#if review.rating}
-                  <span class="recent-review-rating">★ {review.rating}</span>
-                {/if}
-              </div>
-              <div class="recent-review-text">{review.reviewText}</div>
-              <div class="recent-review-book">Book ID: {review.bookId}</div>
-            </div>
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
   {#if userId}
     <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
     <div class="profile-header">
@@ -992,76 +929,5 @@
     margin-top: 8px;
     margin-bottom: 8px;
     display: block;
-  }
-  .recent-reviews-section {
-    background: #f7f9fc;
-    border-radius: 14px;
-    padding: 22px 18px 18px 18px;
-    margin-bottom: 32px;
-    box-shadow: 0 2px 12px rgba(60,60,120,0.07);
-  }
-  .recent-reviews-section h3 {
-    margin-top: 0;
-    margin-bottom: 14px;
-    font-size: 20px;
-    font-weight: 600;
-    color: #1976d2;
-  }
-  .recent-reviews-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .recent-review-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px 12px;
-    box-shadow: 0 1px 4px rgba(60,60,120,0.04);
-  }
-  .recent-review-profile {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1.5px solid #bfc9e0;
-    background: #e3e7ef;
-  }
-  .recent-review-content {
-    flex: 1 1 auto;
-  }
-  .recent-review-meta {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 2px;
-  }
-  .recent-review-user {
-    font-weight: 600;
-    color: #1976d2;
-  }
-  .recent-review-date {
-    color: #888;
-  }
-  .recent-review-rating {
-    color: #ff9800;
-    font-weight: 600;
-  }
-  .recent-review-text {
-    font-size: 15px;
-    color: #333;
-    margin-top: 2px;
-    margin-bottom: 2px;
-  }
-  .recent-review-book {
-    font-size: 13px;
-    color: #888;
   }
 </style>
