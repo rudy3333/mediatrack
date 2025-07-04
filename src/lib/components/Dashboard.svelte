@@ -7,6 +7,7 @@
   import MovieSearch from './MovieSearch.svelte';
   import MovieLibrary from './MovieLibrary.svelte';
   import AlbumSearch from './AlbumSearch.svelte';
+  import AlbumLibrary from './AlbumLibrary.svelte';
   import { writable } from 'svelte/store';
   type Book = {
     isbn: string;
@@ -52,8 +53,12 @@
   const API_BASE_URL = '';
 
   let movieReloadKey = 0;
+  let albumReloadKey = 0;
   function handleMovieSaved() {
     movieReloadKey += 1;
+  }
+  function handleAlbumSaved() {
+    albumReloadKey += 1;
   }
 
   async function deleteBook(id: string) {
@@ -437,7 +442,7 @@
       <div class="booksearch-inline booksearch-right"><MovieSearch userId={userId} on:movie-saved={handleMovieSaved} /></div>
     {/if}
     {#if userId && tab === 'albums'}
-      <div class="booksearch-inline booksearch-right"><AlbumSearch /></div>
+      <div class="booksearch-inline booksearch-right"><AlbumSearch on:album-saved={handleAlbumSaved} /></div>
     {/if}
   </div>
   {#if !userId}
@@ -447,6 +452,8 @@
       <BookLibrary userId={userId} />
     {:else if tab === 'movies'}
       <MovieLibrary userId={userId} {movieReloadKey} />
+    {:else if tab === 'albums'}
+      <AlbumLibrary userId={userId} {albumReloadKey} />
     {/if}
   {/if}
   {#if showProfilePanel}

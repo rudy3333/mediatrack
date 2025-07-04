@@ -872,6 +872,29 @@ app.get('/api/music/albums/user/:userId', async (req, res) => {
   }
 });
 
+app.delete('/api/music/albums/:airtableId', async (req, res) => {
+  const { airtableId } = req.params;
+  if (!airtableId) {
+    return res.status(400).json({ error: 'Album ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Albums/${airtableId}`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to delete album');
+    }
+    res.status(200).json({ success: true, message: 'Album deleted successfully' });
+  } catch (error) {
+    console.error('Delete album error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete album' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

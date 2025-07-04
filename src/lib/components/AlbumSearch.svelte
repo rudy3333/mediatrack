@@ -1,5 +1,8 @@
 <script lang="ts">
   import { user } from '../stores/auth';
+  import { createEventDispatcher } from 'svelte';
+
+  const dispatch = createEventDispatcher();
 
   let search = '';
   let loading = false;
@@ -42,7 +45,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: currentUser.airtableId || currentUser.id,
           mbid: album.mbid,
           title: album.title,
           artist: album.artist,
@@ -55,6 +58,7 @@
         throw new Error(data.error || 'Failed to save album');
       }
       saveStatus = 'Saved!';
+      dispatch('album-saved');
     } catch (e) {
       error = (e as Error).message || 'Failed to save album';
     } finally {
