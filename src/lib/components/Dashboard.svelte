@@ -423,18 +423,24 @@
       </div>
     </div>
   {/if}
-  <div class="tabs">
-    <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
-    <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>Movies/Shows</button>
+  <div class="tabs-row">
+    <div class="tabs">
+      <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
+      <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>Movies/Shows</button>
+    </div>
+    {#if userId && tab === 'books'}
+      <div class="booksearch-inline booksearch-right"><BookSearch userId={userId} /></div>
+    {/if}
+    {#if userId && tab === 'movies'}
+      <div class="booksearch-inline booksearch-right"><MovieSearch userId={userId} on:movie-saved={handleMovieSaved} /></div>
+    {/if}
   </div>
   {#if !userId}
     <AuthForm />
   {:else}
     {#if tab === 'books'}
-      <BookSearch userId={userId} />
       <BookLibrary userId={userId} />
     {:else if tab === 'movies'}
-      <MovieSearch userId={userId} on:movie-saved={handleMovieSaved} />
       <MovieLibrary userId={userId} {movieReloadKey} />
     {/if}
   {/if}
@@ -515,9 +521,35 @@
     filter: brightness(1.08);
     transform: translateY(-2px) scale(1.03);
   }
-  .tabs { display: flex; gap: 1em; margin-bottom: 1em; }
-  .tabs button { padding: 0.5em 1.5em; border: none; background: #eee; cursor: pointer; border-radius: 4px; font-weight: bold; }
-  .tabs button.active { background: #333; color: #fff; }
+  .tabs-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5em;
+    margin-bottom: 1em;
+    position: relative;
+  }
+  .tabs {
+    display: flex;
+    gap: 1em;
+    margin-bottom: 0;
+  }
+  .booksearch-inline {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+  }
+  .booksearch-right {
+    justify-content: flex-end;
+    position: absolute;
+    right: 0;
+    top: -18px;
+    max-width: 400px;
+    width: 100%;
+  }
+  .booksearch-inline .book-search {
+    margin: 0;
+    width: 100%;
+  }
   .profile-header {
     display: flex;
     flex-direction: row;
