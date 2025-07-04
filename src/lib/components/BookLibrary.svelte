@@ -19,6 +19,7 @@
   let reviewStatus: Record<string, string> = {};
   let loadingReviews: Record<string, boolean> = {};
   let showReviewSection: Record<string, boolean> = {};
+  let modalBook: any = null;
 
   async function load() {
     if (!userId) return;
@@ -143,63 +144,73 @@
           {#if book.id}
             <button on:click={() => remove(book.id)}>Delete</button>
             <button on:click={() => {
-              showReviewSection[book.id] = !showReviewSection[book.id];
-              if (showReviewSection[book.id] && !reviews[book.id]) fetchReviews(book.id);
+              modalBook = book;
+              if (!reviews[book.id]) fetchReviews(book.id);
             }}>
-              {showReviewSection[book.id] ? 'Hide Reviews' : 'Reviews'}
+              Reviews
             </button>
-            {#if showReviewSection[book.id]}
-              <div class="review-section">
-                <h5>Reviews</h5>
-                {#if loadingReviews[book.id]}
-                  <p>Loading reviews...</p>
-                {:else if !reviews[book.id] || reviews[book.id].length === 0}
-                  <p>No reviews yet.</p>
-                {:else}
-                  <ul class="review-list">
-                    {#each reviews[book.id] as r}
-                      <li>
-                        <div class="review-meta">
-                          <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
-                          <span class="review-date">{formatDate(r.createdAt)}</span>
-                          {#if r.userId === userId}
-                            <button 
-                              class="delete-review-btn" 
-                              on:click={() => deleteReview(r.id, book.id)}
-                              title="Delete this review"
-                            >
-                              ×
-                            </button>
-                          {/if}
-                        </div>
-                        <div class="review-text">{r.reviewText}</div>
-                      </li>
-                    {/each}
-                  </ul>
-                {/if}
-                <div class="review-form">
-                  <textarea placeholder="Write your review..." bind:value={newReviewText[book.id]}></textarea>
-                  <select bind:value={newReviewRating[book.id]}>
-                    <option value="">Rating (optional)</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                  </select>
-                  <button on:click={() => submitReview(book.id)} disabled={!newReviewText[book.id]?.trim()}>Submit Review</button>
-                  {#if reviewStatus[book.id]}
-                    <span class="review-status">{reviewStatus[book.id]}</span>
-                  {/if}
-                </div>
-              </div>
-            {/if}
           {/if}
         </li>
       {/each}
     </ul>
   {/if}
 </div>
+
+{#if modalBook}
+  <div class="modal-backdrop" on:click={() => modalBook = null}></div>
+  <div class="modal-overlay">
+    <div class="modal-content" on:click|stopPropagation>
+      <button class="close-modal" on:click={() => modalBook = null} aria-label="Close">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <line x1="9" y1="9" x2="19" y2="19" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="19" y1="9" x2="9" y2="19" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <h3>Reviews for {modalBook.title}</h3>
+      {#if loadingReviews[modalBook.id]}
+        <p>Loading reviews...</p>
+      {:else if !reviews[modalBook.id] || reviews[modalBook.id].length === 0}
+        <p>No reviews yet.</p>
+      {:else}
+        <ul class="review-list">
+          {#each reviews[modalBook.id] as r}
+            <li>
+              <div class="review-meta">
+                <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                <span class="review-date">{formatDate(r.createdAt)}</span>
+                {#if r.userId === userId}
+                  <button 
+                    class="delete-review-btn" 
+                    on:click={() => deleteReview(r.id, modalBook.id)}
+                    title="Delete this review"
+                  >
+                    ×
+                  </button>
+                {/if}
+              </div>
+              <div class="review-text">{r.reviewText}</div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="review-form">
+        <textarea placeholder="Write your review..." bind:value={newReviewText[modalBook.id]}></textarea>
+        <select bind:value={newReviewRating[modalBook.id]}>
+          <option value="">Rating (optional)</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+        <button on:click={() => submitReview(modalBook.id)} disabled={!newReviewText[modalBook.id]?.trim()}>Submit Review</button>
+        {#if reviewStatus[modalBook.id]}
+          <span class="review-status">{reviewStatus[modalBook.id]}</span>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
 .book-library ul { list-style: none; padding: 0; }
@@ -225,4 +236,49 @@
 .review-status { margin-left: 10px; color: #388e3c; font-size: 15px; font-weight: 600; }
 .delete-review-btn { background: linear-gradient(90deg, #f44336 60%, #ff7961 100%); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 15px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: auto; box-shadow: 0 2px 8px rgba(244,67,54,0.08); transition: background 0.2s, transform 0.2s; }
 .delete-review-btn:hover { background: #d32f2f; transform: scale(1.1); }
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1001;
+}
+.modal-overlay {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(60,60,120,0.18);
+  padding: 48px 40px 36px 40px;
+  z-index: 1002;
+  min-width: 520px;
+  max-width: 98vw;
+  max-height: 96vh;
+  overflow-y: auto;
+}
+.modal-content { position: relative; }
+.close-modal {
+  position: absolute;
+  top: -30px;
+  right: -20px;
+  background: #fff;
+  border: 2px solid #222;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  transition: background 0.2s, color 0.2s, border 0.2s;
+  padding: 0;
+}
+.close-modal:hover {
+  background: #222;
+  border-color: #222;
+}
+.close-modal:hover svg line {
+  stroke: #fff;
+}
 </style> 
