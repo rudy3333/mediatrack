@@ -1,5 +1,11 @@
 <script lang="ts">
   import { user, logout } from '../stores/auth';
+  import { onMount } from 'svelte';
+  import AuthForm from './AuthForm.svelte';
+  import BookSearch from './BookSearch.svelte';
+  import BookLibrary from './BookLibrary.svelte';
+  import MovieSearch from './MovieSearch.svelte';
+  import MovieLibrary from './MovieLibrary.svelte';
   type Book = {
     isbn: string;
     title: string;
@@ -22,6 +28,8 @@
   let savedBooks: SavedBook[] = [];
   let loadingSavedBooks = false;
   let savedBooksError = '';
+  let userId: string | null = null;
+  let tab: 'books' | 'movies' = 'books';
 
   // --- Review System ---
   type Review = {
@@ -40,6 +48,11 @@
 
   // Add API base URL from Vite env
   const API_BASE_URL = '';
+
+  let movieReloadKey = 0;
+  function handleMovieSaved() {
+    movieReloadKey += 1;
+  }
 
   async function deleteBook(id: string) {
     if (!confirm('Are you sure you want to delete this book?')) return;
@@ -219,315 +232,179 @@
     }
   }
 
-  import { onMount } from 'svelte';
-
-  onMount(() => {
-    fetchSavedBooks();
-  });
-
-
-  $: if ($user?.id) {
-    fetchSavedBooks();
-  }
+  $: userId = $user?.airtableId || $user?.id || null;
 
   $: if (book && book.airtableId) {
     fetchReviews(book.airtableId);
   }
+
+  function handleImgError(e: Event) {
+    const img = e.target as HTMLImageElement | null;
+    if (img) img.src = '/static/placeholder.svg';
+  }
 </script>
 
+<div class="dashboard-bg"></div>
 <div class="dashboard">
-  <div class="dashboard-header">
-    <div class="welcome-section">
-      <h1>Welcome back, {$user?.name}!</h1>
-    </div>
-    <button class="logout-btn" on:click={handleLogout}>
-      Sign Out
-    </button>
+  {#if userId}
+    <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
+  {/if}
+  <div class="tabs">
+    <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
+    <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>Movies/Shows</button>
   </div>
-
-  <div class="dashboard-content">
-
-    <div class="book-search">
-      <h3>Book Lookup</h3>
-      <div class="book-search-form">
-        <input
-          type="text"
-          placeholder="Enter ISBN or Title (e.g 978-1338617436/Heartstopper Vol. 1)"
-          bind:value={isbn}
-          on:keydown={(e) => e.key === 'Enter' && searchBook()}
-          disabled={loadingBook}
-        />
-        <button on:click={searchBook} disabled={loadingBook}>Search</button>
-      </div>
-      {#if loadingBook}
-        <p>Loading...</p>
-      {:else if bookError}
-        <p class="error">{bookError}</p>
-      {:else if book}
-        <div class="book-result">
-          {#if book.cover}
-            <img src={book.cover} alt="Book cover" class="book-cover" />
-          {/if}
-          <div class="book-info">
-            <h4>{book.title}</h4>
-            <button class="save-btn" on:click={saveBook} disabled={savingBook}>{savingBook ? 'Saving...' : 'Save'}</button>
-            {#if saveStatus}
-              <span class="save-status">{saveStatus}</span>
-            {/if}
-            <!-- Review Section -->
-            {#if book && book.airtableId}
-              <div class="review-section">
-                <h5>Reviews</h5>
-                {#if loadingReviews[book.airtableId]}
-                  <p>Loading reviews...</p>
-                {:else if !reviews[book.airtableId] || reviews[book.airtableId].length === 0}
-                  <p>No reviews yet.</p>
-                {:else}
-                  <ul class="review-list">
-                    {#each reviews[book.airtableId] as r}
-                      <li>
-                        <div class="review-meta">
-                          <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
-                          <span class="review-date">{formatDate(r.createdAt)}</span>
-                          {#if r.userId === ($user.airtableId || $user.id)}
-                            <button 
-                              class="delete-review-btn" 
-                              on:click={() => deleteReview(r.id, book.airtableId)}
-                              title="Delete this review"
-                            >
-                              ×
-                            </button>
-                          {/if}
-                        </div>
-                        <div class="review-text">{r.reviewText}</div>
-                      </li>
-                    {/each}
-                  </ul>
-                {/if}
-                {#if $user?.id}
-                  <div class="review-form">
-                    <textarea placeholder="Write your review..." bind:value={newReviewText[book.airtableId]}></textarea>
-                    <select bind:value={newReviewRating[book.airtableId]}>
-                      <option value="">Rating (optional)</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                      <option value="5">5</option>
-                    </select>
-                    <button on:click={() => submitReview(book.airtableId)} disabled={!newReviewText[book.airtableId]?.trim()}>Submit Review</button>
-                    {#if reviewStatus[book.airtableId]}
-                      <span class="review-status">{reviewStatus[book.airtableId]}</span>
-                    {/if}
-                  </div>
-                {/if}
-              </div>
-            {/if}
-            <!-- End Review Section -->
-          </div>
-        </div>
-      {/if}
-    </div>
-
-    <div class="saved-books">
-      <h3>My Saved Books</h3>
-      {#if loadingSavedBooks}
-        <p>Loading...</p>
-      {:else if savedBooksError}
-        <p class="error">{savedBooksError}</p>
-      {:else if savedBooks.length === 0}
-        <p>No books saved yet.</p>
-      {:else}
-        <div class="saved-books-list">
-          {#each savedBooks as b}
-            <div class="saved-book-card">
-              {#if b.cover}
-                <img src={b.cover} alt="Book cover" class="book-cover" />
-              {/if}
-              <div class="book-info">
-                <h4>{b.title}</h4>
-                <p><small>Saved: {formatDate(b.savedAt)}</small></p>
-                <button class="delete-btn" on:click={() => deleteBook(b.id)}>Delete</button>
-                <button class="review-btn" on:click={() => {
-                  showReviewSection[b.id] = !showReviewSection[b.id];
-                  if (showReviewSection[b.id] && !reviews[b.id]) fetchReviews(b.id);
-                }}>
-                  {showReviewSection[b.id] ? 'Hide Reviews' : 'Reviews'}
-                </button>
-                {#if showReviewSection[b.id]}
-                  <div class="review-section">
-                    <h5>Reviews</h5>
-                    {#if loadingReviews[b.id]}
-                      <p>Loading reviews...</p>
-                    {:else if !reviews[b.id] || reviews[b.id].length === 0}
-                      <p>No reviews yet.</p>
-                    {:else}
-                                              <ul class="review-list">
-                          {#each reviews[b.id] as r}
-                            <li>
-                              <div class="review-meta">
-                                <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
-                                <span class="review-date">{formatDate(r.createdAt)}</span>
-                                {#if r.userId === ($user.airtableId || $user.id)}
-                                  <button 
-                                    class="delete-review-btn" 
-                                    on:click={() => deleteReview(r.id, b.id)}
-                                    title="Delete this review"
-                                  >
-                                    ×
-                                  </button>
-                                {/if}
-                              </div>
-                              <div class="review-text">{r.reviewText}</div>
-                            </li>
-                          {/each}
-                        </ul>
-                    {/if}
-                    {#if $user?.id}
-                      <div class="review-form">
-                        <textarea placeholder="Write your review..." bind:value={newReviewText[b.id]}></textarea>
-                        <select bind:value={newReviewRating[b.id]}>
-                          <option value="">Rating (optional)</option>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                          <option value="5">5</option>
-                        </select>
-                        <button on:click={() => submitReview(b.id)} disabled={!newReviewText[b.id]?.trim()}>Submit Review</button>
-                        {#if reviewStatus[b.id]}
-                          <span class="review-status">{reviewStatus[b.id]}</span>
-                        {/if}
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  </div>
+  {#if !userId}
+    <AuthForm />
+  {:else}
+    {#if tab === 'books'}
+      <BookSearch userId={userId} />
+      <BookLibrary userId={userId} />
+    {:else if tab === 'movies'}
+      <MovieSearch userId={userId} on:movie-saved={handleMovieSaved} />
+      <MovieLibrary userId={userId} {movieReloadKey} />
+    {/if}
+  {/if}
 </div>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+  body, .dashboard {
+    font-family: 'Inter', Arial, sans-serif;
+    background: none;
+  }
+  .dashboard-bg {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%);
+    min-height: 100vh;
+  }
   .dashboard {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 32px 20px 20px 20px;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(60, 60, 120, 0.08);
+    background: rgba(255,255,255,0.95);
   }
-
   .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 30px;
     background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 20px;
+    border: none;
+    border-radius: 12px;
+    padding: 28px 24px;
+    box-shadow: 0 2px 12px rgba(60,60,120,0.07);
   }
-
   .welcome-section h1 {
     margin: 0 0 10px 0;
-    font-size: 28px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #22223b;
+    letter-spacing: -1px;
   }
-
-  .welcome-section p {
-    margin: 0;
-    color: #666;
-    font-size: 16px;
-  }
-
   .logout-btn {
-    background: #f44336;
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    background: linear-gradient(90deg, #f44336 60%, #ff7961 100%);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: bold;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+    transition: background 0.2s, transform 0.2s;
+    z-index: 10;
   }
-
   .logout-btn:hover {
-    background: #d32f2f;
+    filter: brightness(1.08);
+    transform: translateY(-2px) scale(1.03);
   }
-
-  .info-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-  }
-
-  .info-card {
+  .book-search, .saved-books {
     background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 20px;
-  }
-
-  .info-card h3 {
-    margin: 0 0 15px 0;
-    font-size: 18px;
-  }
-
-  .info-card p {
-    margin: 5px 0;
-    line-height: 1.5;
-  }
-
-  .book-search {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 30px;
+    border: none;
+    border-radius: 14px;
+    padding: 28px 24px;
+    margin-bottom: 32px;
     max-width: 700px;
+    box-shadow: 0 2px 12px rgba(60,60,120,0.07);
   }
   .book-search-form {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 12px;
+    margin-bottom: 18px;
   }
   .book-search-form input {
     flex: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+    padding: 10px 12px;
+    border: 1.5px solid #bfc9e0;
+    border-radius: 6px;
+    font-size: 17px;
+    background: #f6f8fa;
+    transition: border 0.2s;
+  }
+  .book-search-form input:focus {
+    border: 1.5px solid #1976d2;
+    outline: none;
   }
   .book-search-form button {
-    padding: 8px 16px;
-    font-size: 16px;
+    padding: 10px 20px;
+    font-size: 17px;
     border: none;
-    border-radius: 4px;
-    background: #1976d2;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
     color: white;
     cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+    transition: background 0.2s, transform 0.2s;
   }
   .book-search-form button:disabled {
-    background: #90caf9;
+    background: #b3c6e6;
     cursor: not-allowed;
   }
   .book-result {
     display: flex;
-    gap: 20px;
+    gap: 24px;
     align-items: flex-start;
-    margin-top: 10px;
+    margin-top: 12px;
+    background: #f7f9fc;
+    border-radius: 10px;
+    padding: 18px 16px;
+    box-shadow: 0 1px 6px rgba(60,60,120,0.04);
+    transition: box-shadow 0.2s;
+  }
+  .img-wrapper {
+    min-width: 75px;
+    min-height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e3e7ef;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.04);
+    overflow: hidden;
   }
   .book-cover {
     width: 75px;
     height: auto;
-    border: 1px solid #eee;
     border-radius: 4px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    background: #e3e7ef;
+    object-fit: cover;
+    transition: filter 0.2s;
   }
   .book-info h4 {
     margin: 0 0 8px 0;
-    font-size: 20px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #22223b;
   }
   .book-info p {
     margin: 0 0 6px 0;
@@ -536,94 +413,108 @@
   .error {
     color: #d32f2f;
     font-weight: bold;
+    margin-top: 8px;
   }
   .save-btn {
     margin-top: 10px;
-    background: #43a047;
+    background: linear-gradient(90deg, #43a047 60%, #81c784 100%);
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
+    padding: 8px 18px;
+    border-radius: 6px;
     font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(67,160,71,0.08);
+    transition: background 0.2s, transform 0.2s;
   }
   .save-btn:disabled {
-    background: #a5d6a7;
+    background: #b7e1c2;
     cursor: not-allowed;
   }
   .save-status {
     display: inline-block;
-    margin-left: 12px;
+    margin-left: 14px;
     color: #388e3c;
     font-weight: bold;
-    font-size: 15px;
-  }
-
-  .saved-books {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 30px;
-    max-width: 700px;
+    font-size: 16px;
   }
   .saved-books-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 20px;
   }
   .saved-book-card {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
-    background: #fafafa;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    padding: 10px;
+    gap: 14px;
+    background: #f7f9fc;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 10px 14px 10px;
     min-width: 180px;
     max-width: 240px;
     box-sizing: border-box;
+    box-shadow: 0 1px 6px rgba(60,60,120,0.04);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .saved-book-card:hover {
+    box-shadow: 0 4px 16px rgba(60,60,120,0.10);
+    transform: translateY(-2px) scale(1.03);
   }
   .book-info {
     flex: 1 1 auto;
     width: 100%;
   }
+  .delete-btn {
+    background: linear-gradient(90deg, #f44336 60%, #ff7961 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .review-btn {
+    margin-top: 8px;
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 8px;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+    transition: background 0.2s, transform 0.2s;
+  }
   .review-section {
+    margin-top: 18px;
+    background: #e9f0fa;
+    border-radius: 8px;
+    padding: 14px 12px;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.04);
     width: 100%;
     box-sizing: border-box;
     overflow: visible;
+    animation: fadeIn 0.4s;
   }
-
-  @media (max-width: 768px) {
-    .dashboard {
-      padding: 10px;
-    }
-
-    .dashboard-header {
-      flex-direction: column;
-      gap: 15px;
-      align-items: stretch;
-    }
-
-    .welcome-section h1 {
-      font-size: 24px;
-    }
-
-    .info-cards {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .review-section {
-    margin-top: 18px;
-    background: #f5f5f5;
-    border-radius: 4px;
-    padding: 12px;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
   }
   .review-section h5 {
     margin: 0 0 8px 0;
-    font-size: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #22223b;
   }
   .review-list {
     list-style: none;
@@ -633,7 +524,15 @@
   .review-list li {
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #dbeafe;
+    background: #f5faff;
+    border-radius: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+    transition: background 0.2s;
+  }
+  .review-list li:hover {
+    background: #e3e7ef;
   }
   .review-meta {
     font-size: 13px;
@@ -641,79 +540,149 @@
     display: flex;
     gap: 10px;
     margin-bottom: 2px;
+    align-items: center;
   }
   .review-rating {
     color: #ff9800;
+    font-weight: 600;
+  }
+  .review-date {
+    color: #6c757d;
   }
   .review-text {
     font-size: 15px;
     color: #333;
+    margin-top: 2px;
   }
   .review-form {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     margin-top: 10px;
+    background: #f7f9fc;
+    border-radius: 6px;
+    padding: 8px 6px;
   }
   .review-form textarea {
     resize: vertical;
     min-height: 40px;
     font-size: 15px;
-    padding: 6px;
+    padding: 7px;
     border-radius: 4px;
-    border: 1px solid #ccc;
+    border: 1.5px solid #bfc9e0;
+    background: #f6f8fa;
+    transition: border 0.2s;
+  }
+  .review-form textarea:focus {
+    border: 1.5px solid #1976d2;
+    outline: none;
   }
   .review-form select {
-    width: 120px;
+    width: 130px;
     font-size: 15px;
-    padding: 3px;
+    padding: 4px;
     border-radius: 4px;
-    border: 1px solid #ccc;
+    border: 1.5px solid #bfc9e0;
+    background: #f6f8fa;
+    transition: border 0.2s;
+  }
+  .review-form select:focus {
+    border: 1.5px solid #1976d2;
+    outline: none;
   }
   .review-form button {
     align-self: flex-start;
-    background: #1976d2;
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
     color: white;
     border: none;
-    border-radius: 4px;
-    padding: 6px 14px;
+    border-radius: 6px;
+    padding: 7px 16px;
     font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+    transition: background 0.2s, transform 0.2s;
   }
   .review-status {
     margin-left: 10px;
     color: #388e3c;
-    font-size: 14px;
-  }
-  .review-btn {
-    margin-top: 8px;
-    background: #1976d2;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 14px;
     font-size: 15px;
-    cursor: pointer;
-    margin-right: 8px;
+    font-weight: 600;
   }
-
   .delete-review-btn {
-    background: #f44336;
+    background: linear-gradient(90deg, #f44336 60%, #ff7961 100%);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 14px;
+    width: 22px;
+    height: 22px;
+    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-left: auto;
+    box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+    transition: background 0.2s, transform 0.2s;
   }
-
   .delete-review-btn:hover {
     background: #d32f2f;
+    transform: scale(1.1);
   }
+  .loader {
+    border: 4px solid #e3e7ef;
+    border-top: 4px solid #1976d2;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px auto;
+    display: block;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @media (max-width: 768px) {
+    .dashboard {
+      padding: 10px;
+    }
+    .dashboard-header {
+      flex-direction: column;
+      gap: 15px;
+      align-items: stretch;
+      padding: 18px 10px;
+    }
+    .welcome-section h1 {
+      font-size: 24px;
+    }
+    .book-search, .saved-books {
+      padding: 16px 8px;
+    }
+    .saved-books-list {
+      gap: 10px;
+    }
+    .saved-book-card {
+      min-width: 120px;
+      max-width: 100%;
+      padding: 8px 4px;
+    }
+  }
+  .placeholder-cover {
+    width: 75px;
+    height: 110px;
+    background: repeating-linear-gradient(135deg, #e3e7ef, #e3e7ef 10px, #f6f8fa 10px, #f6f8fa 20px);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bfc9e0;
+    font-size: 13px;
+    font-style: italic;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.04);
+  }
+  .tabs { display: flex; gap: 1em; margin-bottom: 1em; }
+  .tabs button { padding: 0.5em 1.5em; border: none; background: #eee; cursor: pointer; border-radius: 4px; font-weight: bold; }
+  .tabs button.active { background: #333; color: #fff; }
 </style>

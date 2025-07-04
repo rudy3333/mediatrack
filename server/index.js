@@ -104,6 +104,15 @@ async function getUserByEmail(email) {
   }
 }
 
+// OMDb configuration from environment variables
+const OMDB_API_KEY = process.env.OMDB_API_KEY;
+const OMDB_API_URL = 'https://www.omdbapi.com/';
+
+if (!OMDB_API_KEY) {
+  console.error('❌ OMDb API key missing. Please add OMDB_API_KEY to your .env file.');
+  process.exit(1);
+}
+
 // API Routes
 
 // Health check
@@ -467,6 +476,156 @@ app.delete('/api/reviews/:reviewId', async (req, res) => {
   } catch (error) {
     console.error('Delete review error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete review' });
+  }
+});
+
+// --- MOVIES/SHOWS ENDPOINTS ---
+// Lookup by IMDb ID
+app.get('/api/movies/:imdbId', async (req, res) => {
+  const { imdbId } = req.params;
+  if (!imdbId) {
+    return res.status(400).json({ error: 'IMDb ID is required' });
+  }
+  try {
+    const url = `${OMDB_API_URL}?i=${encodeURIComponent(imdbId)}&apikey=${OMDB_API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Movie/show not found' });
+    }
+    const data = await response.json();
+    if (data.Response === 'False') {
+      return res.status(404).json({ error: data.Error || 'Movie/show not found' });
+    }
+    res.json({
+      imdbId: data.imdbID,
+      title: data.Title,
+      poster: data.Poster,
+      type: data.Type,
+      year: data.Year
+    });
+  } catch (error) {
+    console.error('Movie lookup error:', error);
+    res.status(500).json({ error: 'Failed to fetch movie/show data' });
+  }
+});
+
+// Lookup by title
+app.get('/api/movies/title/:title', async (req, res) => {
+  const { title } = req.params;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  try {
+    const url = `${OMDB_API_URL}?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Movie/show not found' });
+    }
+    const data = await response.json();
+    if (data.Response === 'False') {
+      return res.status(404).json({ error: data.Error || 'Movie/show not found' });
+    }
+    res.json({
+      imdbId: data.imdbID,
+      title: data.Title,
+      poster: data.Poster,
+      type: data.Type,
+      year: data.Year
+    });
+  } catch (error) {
+    console.error('Movie lookup by title error:', error);
+    res.status(500).json({ error: 'Failed to fetch movie/show data' });
+  }
+});
+
+// Save movie/show to user's library
+app.post('/api/movies/save', async (req, res) => {
+  const { userId, imdbId, title, poster, type, year } = req.body;
+  if (!userId || !imdbId || !title) {
+    return res.status(400).json({ error: 'userId, imdbId, and title are required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Movies`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fields: {
+          UserID: String(userId),
+          IMDbID: imdbId,
+          Title: title,
+          Poster: poster || '',
+          Type: type || '',
+          Year: year || '',
+          SavedAt: new Date().toISOString()
+        }
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to save movie/show');
+    }
+    const data = await response.json();
+    res.status(201).json({ movie: data });
+  } catch (error) {
+    console.error('Save movie/show error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save movie/show' });
+  }
+});
+
+// Get user's saved movies/shows
+app.get('/api/movies/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Movies?filterByFormula={UserID}='${String(userId)}'`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch movies/shows');
+    }
+    const data = await response.json();
+    const movies = data.records.map(record => ({
+      id: record.id,
+      imdbId: record.fields.IMDbID,
+      title: record.fields.Title,
+      poster: record.fields.Poster,
+      type: record.fields.Type,
+      year: record.fields.Year,
+      savedAt: record.fields.SavedAt
+    }));
+    res.json({ movies });
+  } catch (error) {
+    console.error('Fetch user movies/shows error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch movies/shows' });
+  }
+});
+
+// Delete saved movie/show
+app.delete('/api/movies/:airtableId', async (req, res) => {
+  const { airtableId } = req.params;
+  if (!airtableId) {
+    return res.status(400).json({ error: 'Movie/show ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Movies/${airtableId}`;
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to delete movie/show');
+    }
+    res.status(200).json({ success: true, message: 'Movie/show deleted successfully' });
+  } catch (error) {
+    console.error('Delete movie/show error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete movie/show' });
   }
 });
 
