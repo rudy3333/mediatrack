@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   createdAt: string;
+  profilePicture?: string;
 }
 
 export interface LoginCredentials {

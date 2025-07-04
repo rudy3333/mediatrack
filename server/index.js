@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -96,7 +98,8 @@ async function getUserByEmail(email) {
       name: record.fields.Name,
       email: record.fields.Email,
       password: record.fields.Password,
-      createdAt: record.fields.CreatedAt
+      createdAt: record.fields.CreatedAt,
+      profilePicture: record.fields.ProfilePicture || undefined
     };
   } catch (error) {
     console.error('Error fetching user by email:', error);
@@ -112,6 +115,18 @@ if (!OMDB_API_KEY) {
   console.error('❌ OMDb API key missing. Please add OMDB_API_KEY to your .env file.');
   process.exit(1);
 }
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(process.cwd(), 'static'));
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `profile_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, uniqueName);
+  }
+});
+const upload = multer({ storage });
 
 // API Routes
 
@@ -133,7 +148,7 @@ app.delete('/api/test', (req, res) => {
 // Register user
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, profilePicture } = req.body;
 
     // Validate input
     if (!name || !email || !password) {
@@ -165,7 +180,8 @@ app.post('/api/auth/register', async (req, res) => {
           Name: name,
           Email: email,
           Password: hashedPassword,
-          CreatedAt: new Date().toISOString()
+          CreatedAt: new Date().toISOString(),
+          ...(profilePicture ? { ProfilePicture: profilePicture } : {})
         }
       })
     });
@@ -183,7 +199,8 @@ app.post('/api/auth/register', async (req, res) => {
       airtableId: data.id,
       name: data.fields.Name,
       email: data.fields.Email,
-      createdAt: data.fields.CreatedAt
+      createdAt: data.fields.CreatedAt,
+      profilePicture: data.fields.ProfilePicture || undefined
     };
 
     res.status(201).json({ user });
@@ -221,7 +238,8 @@ app.post('/api/auth/login', async (req, res) => {
       airtableId: user.airtableId,
       name: user.name,
       email: user.email,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      profilePicture: user.profilePicture || undefined
     };
 
     res.json({ user: userData });
@@ -626,6 +644,44 @@ app.delete('/api/movies/:airtableId', async (req, res) => {
   } catch (error) {
     console.error('Delete movie/show error:', error);
     res.status(500).json({ error: error.message || 'Failed to delete movie/show' });
+  }
+});
+
+app.post('/api/upload/profile-picture', upload.single('profilePicture'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const publicUrl = `/static/${req.file.filename}`;
+  res.json({ url: publicUrl });
+});
+
+app.patch('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, profilePicture } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${AIRTABLE_CONFIG.tableName}/${id}`;
+    const headers = getAirtableHeaders();
+    const fields = {};
+    if (name) fields['Name'] = name;
+    if (email) fields['Email'] = email;
+    if (profilePicture) fields['ProfilePicture'] = profilePicture;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ fields })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to update user');
+    }
+    const data = await response.json();
+    res.json({ user: data });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update user' });
   }
 });
 

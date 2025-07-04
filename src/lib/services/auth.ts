@@ -26,7 +26,7 @@ export async function registerUser(credentials: RegisterCredentials): Promise<Us
     body: JSON.stringify({
       name: credentials.name,
       email: credentials.email,
-      password: credentials.password,
+      password: credentials.password
     }),
   });
 

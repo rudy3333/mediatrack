@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { user, logout } from '../stores/auth';
+  import { user, logout, setUser } from '../stores/auth';
   import { onMount } from 'svelte';
   import AuthForm from './AuthForm.svelte';
   import BookSearch from './BookSearch.svelte';
   import BookLibrary from './BookLibrary.svelte';
   import MovieSearch from './MovieSearch.svelte';
   import MovieLibrary from './MovieLibrary.svelte';
+  import { writable } from 'svelte/store';
   type Book = {
     isbn: string;
     title: string;
@@ -240,7 +241,84 @@
 
   function handleImgError(e: Event) {
     const img = e.target as HTMLImageElement | null;
-    if (img) img.src = '/static/placeholder.svg';
+    if (img) img.src = '/static/placeholder.jpg';
+  }
+
+  let showProfilePanel = false;
+  let profileForm = { name: '', email: '', profilePicture: '' };
+  let selectedProfileFile: File | null = null;
+  let previewProfileUrl: string | null = null;
+
+  function handleProfileFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      selectedProfileFile = input.files[0];
+      previewProfileUrl = URL.createObjectURL(selectedProfileFile);
+    } else {
+      selectedProfileFile = null;
+      previewProfileUrl = null;
+    }
+  }
+
+  $: if ($user) {
+    profileForm.name = $user.name;
+    profileForm.email = $user.email;
+    profileForm.profilePicture = $user.profilePicture || '';
+  }
+
+  function openProfilePanel() {
+    if ($user) {
+      profileForm.name = $user.name;
+      profileForm.email = $user.email;
+      profileForm.profilePicture = $user.profilePicture || '';
+      showProfilePanel = true;
+    }
+  }
+  function closeProfilePanel() {
+    showProfilePanel = false;
+  }
+  async function saveProfile() {
+    let profilePictureUrl = profileForm.profilePicture;
+    if (selectedProfileFile) {
+      const formData = new FormData();
+      formData.append('profilePicture', selectedProfileFile);
+      const uploadRes = await fetch('/api/upload/profile-picture', {
+        method: 'POST',
+        body: formData
+      });
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        profilePictureUrl = data.url;
+      } else {
+        alert('Failed to upload profile picture.');
+        return;
+      }
+    }
+    const userId = $user?.airtableId || $user?.id;
+    if (!userId) return;
+    const patchRes = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: profileForm.name,
+        email: profileForm.email,
+        profilePicture: profilePictureUrl
+      })
+    });
+    if (patchRes.ok) {
+      const data = await patchRes.json();
+      setUser({
+        ...$user,
+        name: profileForm.name,
+        email: profileForm.email,
+        profilePicture: profilePictureUrl
+      });
+      showProfilePanel = false;
+      selectedProfileFile = null;
+      previewProfileUrl = null;
+    } else {
+      alert('Failed to update profile.');
+    }
   }
 </script>
 
@@ -248,6 +326,12 @@
 <div class="dashboard">
   {#if userId}
     <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
+    <div class="profile-header">
+      <img class="profile-picture" src={$user?.profilePicture || '/static/placeholder.jpg'} alt="Profile Picture" on:error={handleImgError} />
+      <div class="profile-actions">
+        <button class="manage-profile-btn" on:click={openProfilePanel}>Manage Profile</button>
+      </div>
+    </div>
   {/if}
   <div class="tabs">
     <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
@@ -263,6 +347,35 @@
       <MovieSearch userId={userId} on:movie-saved={handleMovieSaved} />
       <MovieLibrary userId={userId} {movieReloadKey} />
     {/if}
+  {/if}
+  {#if showProfilePanel}
+    <div class="profile-panel-backdrop" on:click={closeProfilePanel}></div>
+    <div class="profile-panel">
+      <h3>Manage Profile</h3>
+      <form on:submit|preventDefault={saveProfile}>
+        <label>
+          Name
+          <input type="text" bind:value={profileForm.name} />
+        </label>
+        <label>
+          Email
+          <input type="email" bind:value={profileForm.email} />
+        </label>
+        <label>
+          Profile Picture
+          <input type="file" accept="image/*" on:change={handleProfileFileChange} />
+          {#if previewProfileUrl}
+            <img src={previewProfileUrl} alt="Preview" class="profile-picture-preview" />
+          {:else if profileForm.profilePicture}
+            <img src={profileForm.profilePicture} alt="Current" class="profile-picture-preview" />
+          {/if}
+        </label>
+        <div class="profile-panel-actions">
+          <button type="submit">Save</button>
+          <button type="button" on:click={closeProfilePanel}>Cancel</button>
+        </div>
+      </form>
+    </div>
   {/if}
 </div>
 
@@ -313,9 +426,8 @@
     background: linear-gradient(90deg, #f44336 60%, #ff7961 100%);
     color: white;
     border: none;
-    padding: 12px 28px;
-    border-radius: 8px;
-    font-size: 16px;
+    padding: 8px 18px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(244,67,54,0.08);
@@ -685,4 +797,137 @@
   .tabs { display: flex; gap: 1em; margin-bottom: 1em; }
   .tabs button { padding: 0.5em 1.5em; border: none; background: #eee; cursor: pointer; border-radius: 4px; font-weight: bold; }
   .tabs button.active { background: #333; color: #fff; }
+  .profile-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .manage-profile-btn {
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .manage-profile-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .logout-btn {
+    background: linear-gradient(90deg, #f44336 60%, #ff7961 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(244,67,54,0.08);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .logout-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .profile-panel-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: 1001;
+  }
+  .profile-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(60,60,120,0.18);
+    padding: 32px 28px 24px 28px;
+    z-index: 1002;
+    min-width: 320px;
+    max-width: 90vw;
+  }
+  .profile-panel h3 {
+    margin-top: 0;
+    margin-bottom: 18px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #22223b;
+  }
+  .profile-panel label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 15px;
+    color: #333;
+  }
+  .profile-panel input {
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 5px;
+    border: 1.5px solid #bfc9e0;
+    font-size: 15px;
+    margin-top: 4px;
+    background: #f6f8fa;
+    margin-bottom: 4px;
+  }
+  .profile-panel-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .profile-panel-actions button {
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .profile-panel-actions button[type="button"] {
+    background: #bfc9e0;
+    color: #333;
+  }
+  .profile-panel-actions button:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .profile-picture {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #bfc9e0;
+    background: #e3e7ef;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.08);
+  }
+  .profile-picture-preview {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #bfc9e0;
+    background: #e3e7ef;
+    box-shadow: 0 1px 4px rgba(60,60,120,0.08);
+    margin-top: 8px;
+    margin-bottom: 8px;
+    display: block;
+  }
 </style>
