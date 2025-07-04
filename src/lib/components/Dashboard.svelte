@@ -200,6 +200,25 @@
     }
   }
 
+  async function deleteReview(reviewId: string, bookId: string) {
+    if (!confirm('Are you sure you want to delete this review?')) return;
+    
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete review.');
+        return;
+      }
+      // Refresh reviews after deletion
+      fetchReviews(bookId);
+    } catch (e) {
+      alert('Failed to delete review.');
+    }
+  }
+
   import { onMount } from 'svelte';
 
   onMount(() => {
@@ -270,6 +289,15 @@
                         <div class="review-meta">
                           <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
                           <span class="review-date">{formatDate(r.createdAt)}</span>
+                          {#if r.userId === ($user.airtableId || $user.id)}
+                            <button 
+                              class="delete-review-btn" 
+                              on:click={() => deleteReview(r.id, book.airtableId)}
+                              title="Delete this review"
+                            >
+                              ×
+                            </button>
+                          {/if}
                         </div>
                         <div class="review-text">{r.reviewText}</div>
                       </li>
@@ -334,17 +362,26 @@
                     {:else if !reviews[b.id] || reviews[b.id].length === 0}
                       <p>No reviews yet.</p>
                     {:else}
-                      <ul class="review-list">
-                        {#each reviews[b.id] as r}
-                          <li>
-                            <div class="review-meta">
-                              <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
-                              <span class="review-date">{formatDate(r.createdAt)}</span>
-                            </div>
-                            <div class="review-text">{r.reviewText}</div>
-                          </li>
-                        {/each}
-                      </ul>
+                                              <ul class="review-list">
+                          {#each reviews[b.id] as r}
+                            <li>
+                              <div class="review-meta">
+                                <span class="review-rating">{r.rating ? `Rating: ${r.rating}/5` : ''}</span>
+                                <span class="review-date">{formatDate(r.createdAt)}</span>
+                                {#if r.userId === ($user.airtableId || $user.id)}
+                                  <button 
+                                    class="delete-review-btn" 
+                                    on:click={() => deleteReview(r.id, b.id)}
+                                    title="Delete this review"
+                                  >
+                                    ×
+                                  </button>
+                                {/if}
+                              </div>
+                              <div class="review-text">{r.reviewText}</div>
+                            </li>
+                          {/each}
+                        </ul>
                     {/if}
                     {#if $user?.id}
                       <div class="review-form">
@@ -658,5 +695,25 @@
     font-size: 15px;
     cursor: pointer;
     margin-right: 8px;
+  }
+
+  .delete-review-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+  }
+
+  .delete-review-btn:hover {
+    background: #d32f2f;
   }
 </style>

@@ -115,6 +115,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Test DELETE endpoint
+app.delete('/api/test', (req, res) => {
+  console.log('Test DELETE endpoint called');
+  res.json({ message: 'DELETE endpoint is working' });
+});
+
 // Register user
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -434,6 +440,33 @@ app.get('/api/reviews/:bookId', async (req, res) => {
   } catch (error) {
     console.error('Fetch reviews error:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch reviews' });
+  }
+});
+
+// DELETE /api/reviews/:reviewId
+app.delete('/api/reviews/:reviewId', async (req, res) => {
+  console.log('DELETE /api/reviews/:reviewId called with reviewId:', req.params.reviewId);
+  const { reviewId } = req.params;
+  if (!reviewId) {
+    return res.status(400).json({ error: 'reviewId is required' });
+  }
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/Reviews/${reviewId}`;
+    console.log('Deleting review from Airtable URL:', url);
+    const headers = getAirtableHeaders();
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to delete review');
+    }
+    console.log('Review deleted successfully');
+    res.status(200).json({ success: true, message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Delete review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete review' });
   }
 });
 
