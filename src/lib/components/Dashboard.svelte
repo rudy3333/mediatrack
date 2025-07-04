@@ -379,6 +379,15 @@
 
 <div class="dashboard-bg"></div>
 <div class="dashboard">
+  {#if userId}
+    <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
+    <div class="profile-header">
+      <img class="profile-picture" src={$user?.profilePicture || '/static/placeholder.jpg'} alt={$user?.name ? `Profile photo of ${$user.name}` : 'User profile photo'} on:error={handleImgError} />
+      <div class="profile-actions">
+        <button class="manage-profile-btn" on:click={openProfilePanel}>Manage Profile</button>
+      </div>
+    </div>
+  {/if}
   <section class="recent-reviews">
     <h2>Recent Reviews</h2>
     {#if loadingRecent}
@@ -414,15 +423,6 @@
       </div>
     {/if}
   </section>
-  {#if userId}
-    <button class="logout-btn" on:click={handleLogout}>Sign Out</button>
-    <div class="profile-header">
-      <img class="profile-picture" src={$user?.profilePicture || '/static/placeholder.jpg'} alt={$user?.name ? `Profile photo of ${$user.name}` : 'User profile photo'} on:error={handleImgError} />
-      <div class="profile-actions">
-        <button class="manage-profile-btn" on:click={openProfilePanel}>Manage Profile</button>
-      </div>
-    </div>
-  {/if}
   <div class="tabs-row">
     <div class="tabs">
       <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
@@ -554,14 +554,16 @@
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     gap: 18px;
     margin-bottom: 18px;
     position: relative;
   }
   .profile-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
+    margin-left: auto;
   }
   .manage-profile-btn {
     background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
