@@ -7,6 +7,21 @@
   let book: any = null;
   let saving = false;
   let saveStatus = '';
+  let resultElement: HTMLDivElement;
+
+  function handleClickOutside(event: MouseEvent) {
+    if (book && resultElement && !resultElement.contains(event.target as Node)) {
+      book = null;
+      saveStatus = '';
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
 
   async function searchBook() {
     error = '';
@@ -67,7 +82,7 @@
     <div class="error">{error}</div>
   {/if}
   {#if book}
-    <div class="result">
+    <div class="result" bind:this={resultElement}>
       {#if book.cover}
         <img src={book.cover} alt={book.title} width="100" />
       {/if}

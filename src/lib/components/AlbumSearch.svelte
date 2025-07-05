@@ -1,6 +1,7 @@
 <script lang="ts">
   import { user } from '../stores/auth';
   import { createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -10,7 +11,22 @@
   let album: any = null;
   let saving = false;
   let saveStatus = '';
+  let resultElement: HTMLDivElement;
   $: currentUser = $user;
+
+  function handleClickOutside(event: MouseEvent) {
+    if (album && resultElement && !resultElement.contains(event.target as Node)) {
+      album = null;
+      saveStatus = '';
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
 
   async function searchAlbums() {
     error = '';
@@ -77,7 +93,7 @@
     <div class="error">{error}</div>
   {/if}
   {#if album}
-    <div class="result">
+    <div class="result" bind:this={resultElement}>
       {#if album.cover}
         <img src={album.cover} alt={album.title} width="100" />
       {/if}

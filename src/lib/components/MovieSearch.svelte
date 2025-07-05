@@ -2,13 +2,29 @@
   import { createEventDispatcher } from 'svelte';
   import { lookupMovieByTitle, saveMovie } from '../services/movies';
   import type { Movie } from '../services/movies';
+  import { onMount } from 'svelte';
   export let userId: string;
   let search = '';
   let result: Movie | null = null;
   let error: string = '';
   let saving = false;
   let saved = false;
+  let resultElement: HTMLDivElement;
   const dispatch = createEventDispatcher();
+
+  function handleClickOutside(event: MouseEvent) {
+    if (result && resultElement && !resultElement.contains(event.target as Node)) {
+      result = null;
+      saved = false;
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
 
   async function searchMovie() {
     error = '';
@@ -53,7 +69,7 @@
     <div class="error">{error}</div>
   {/if}
   {#if result}
-    <div class="result">
+    <div class="result" bind:this={resultElement}>
       <img src={result.poster} alt={result.title} width="100" />
       <div><strong>{result.title}</strong> {result.year ? `(${result.year})` : ''}</div>
       <button on:click={save} disabled={saving || saved}>{saved ? 'Saved!' : saving ? 'Saving...' : 'Save to Library'}</button>
