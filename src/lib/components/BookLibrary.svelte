@@ -174,7 +174,7 @@
 </div>
 
 {#if modalBook}
-  <div class="modal-backdrop" on:click={() => modalBook = null}></div>
+  <div class="modal-backdrop" role="button" tabindex="0" on:click={() => modalBook = null} on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? modalBook = null : null}></div>
   <div class="modal-overlay">
     <div class="modal-content" on:click|stopPropagation>
       <button class="close-modal" on:click={() => modalBook = null} aria-label="Close">

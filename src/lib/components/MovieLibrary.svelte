@@ -141,12 +141,10 @@
     return modalMovie && typeof modalMovie.id === 'string' ? modalMovie.id : '';
   }
 
-  function renderStars(rating: number) {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-      stars += i <= rating ? '★' : '☆';
-    }
-    return stars;
+  function renderStars(rating: number): string {
+    const filledStar = '★';
+    const emptyStar = '☆';
+    return filledStar.repeat(Math.min(rating, 5)) + emptyStar.repeat(Math.max(0, 5 - rating));
   }
 
   function handleImgError(e: Event) {
