@@ -431,9 +431,24 @@
   </section>
   <div class="tabs-row">
     <div class="tabs">
-      <button class:active={tab === 'books'} on:click={() => tab = 'books'}>Books</button>
-      <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>Movies/Shows</button>
-      <button class:active={tab === 'albums'} on:click={() => tab = 'albums'}>Albums</button>
+      <button class:active={tab === 'books'} on:click={() => tab = 'books'}>
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21,5c-1.11-0.35-2.33-0.5-3.5-0.5c-1.95,0-4.05,0.4-5.5,1.5c-1.45-1.1-3.55-1.5-5.5-1.5S2.45,4.9,1,6v14.65c0,0.25,0.25,0.5,0.5,0.5c0.1,0,0.15-0.05,0.25-0.05C3.1,20.45,5.05,20,6.5,20c1.95,0,4.05,0.4,5.5,1.5c1.35-0.85,3.8-1.5,5.5-1.5c1.65,0,3.35,0.3,4.75,1.05c0.1,0.05,0.15,0.05,0.25,0.05c0.25,0,0.5-0.25,0.5-0.5V6C22.4,5.55,21.75,5.25,21,5z M21,18.5c-1.1-0.35-2.3-0.5-3.5-0.5c-1.7,0-4.15,0.65-5.5,1.5V8c1.35-0.85,3.8-1.5,5.5-1.5c1.2,0,2.4,0.15,3.5,0.5V18.5z"/>
+        </svg>
+        Books
+      </button>
+      <button class:active={tab === 'movies'} on:click={() => tab = 'movies'}>
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18,4l2,4h-3l-2-4h-2l2,4h-3l-2-4H8l2,4H7L5,4H4c-1.1,0-1.99,0.9-1.99,2L2,18c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V4H18z"/>
+        </svg>
+        Movies/Shows
+      </button>
+      <button class:active={tab === 'albums'} on:click={() => tab = 'albums'}>
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+        </svg>
+        Albums
+      </button>
     </div>
     {#if userId && tab === 'books'}
       <div class="booksearch-inline booksearch-right"><BookSearch userId={userId} /></div>
@@ -798,5 +813,47 @@
     color: #7b7b9a;
     font-size: 13px;
     margin-top: 4px;
+  }
+  
+  /* Tab button styling */
+  .tabs button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1.5px solid #bfc9e0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #3a3a5a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 4px rgba(60, 60, 120, 0.06);
+  }
+  
+  .tabs button:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #1976d2;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.12);
+  }
+  
+  .tabs button.active {
+    background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+    border-color: #1976d2;
+    color: white;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+  }
+  
+  .tabs button.active:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+  
+  .tab-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
   }
 </style>
