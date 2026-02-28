@@ -53,7 +53,7 @@
     "periscopic": "^3.1.0",
     "picocolors": "^1.1.1",
     "postcss": "^8.5.6",
-    "rollup": "^4.44.1",
+    "rollup": "^4.59.0",
     "sade": "^1.8.1",
     "set-cookie-parser": "^2.7.1",
     "sirv": "^3.0.1",
